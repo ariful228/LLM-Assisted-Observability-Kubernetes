@@ -358,7 +358,7 @@ footer code{font-family:var(--mono);color:#7dd3fc}
           <text x="484" y="174" text-anchor="middle" font-size="12.5" font-weight="800" fill="#f5d0fe">docker/langfuse-compose.yml</text>
           <text x="484" y="194" text-anchor="middle" font-size="9.5" fill="#94a3b8" class="mono">langfuse web :3000 · its own postgres :5433</text>
           <text x="484" y="210" text-anchor="middle" font-size="9.5" fill="#94a3b8" class="mono">clickhouse · redis · minio :9092/:9093</text>
-          <text x="484" y="224" text-anchor="middle" font-size="9" fill="#f5d0fe" class="mono">self-hosted, like case-aiops — project "ai-observability"</text></g>
+          <text x="484" y="224" text-anchor="middle" font-size="9" fill="#f5d0fe" class="mono">self-hosted, like  — project "ai-observability"</text></g>
 
         <!-- kind -->
         <g class="node-g"><rect x="330" y="244" rx="16" width="308" height="84" class="lg-node" stroke="#fbbf24"/>
@@ -415,7 +415,7 @@ footer code{font-family:var(--mono);color:#7dd3fc}
           <marker id="l-vio" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0L10,5L0,10z" fill="#a78bfa"/></marker>
           <marker id="l-amb" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0L10,5L0,10z" fill="#fbbf24"/></marker>
         </defs>
-        <text x="530" y="24" text-anchor="middle" font-size="12.5" font-weight="800" fill="#cbd5e1">🧭 like case-aiops: one compiled StateGraph — detect → investigate → rag_retrieve → diagnose/risk → gate → finalize</text>
+        <text x="530" y="24" text-anchor="middle" font-size="12.5" font-weight="800" fill="#cbd5e1">🧭 like : one compiled StateGraph — detect → investigate → rag_retrieve → diagnose/risk → gate → finalize</text>
 
         <!-- detect -->
         <g class="node-g"><rect x="40" y="170" rx="10" width="200" height="86" class="lg-node" stroke="#38bdf8"/>
@@ -776,7 +776,7 @@ const STAGES = [
   {
     key:'preflight', n:1, icon:'🧰', title:'Preflight & local stack — run_stack.sh stack up',
     tag:'LOCAL STACK', color:'sky',
-    blurb:'run_stack.sh preflights .env, then brings up the whole observability stack via docker compose — all bound to 127.0.0.1. Grafana gained a provisioned "AI Observability" dashboard in this release; Langfuse is self-hosted through langfuse-compose like case-aiops.',
+    blurb:'run_stack.sh preflights .env, then brings up the whole observability stack via docker compose — all bound to 127.0.0.1. Grafana gained a provisioned "AI Observability" dashboard in this release; Langfuse is self-hosted through langfuse-compose like .',
     flow:[
       {t:'preflight .env',d:'bash scripts/run_stack.sh stack up'},
       {t:'docker-compose up',d:'docker/docker-compose.yml — healthchecks'},
