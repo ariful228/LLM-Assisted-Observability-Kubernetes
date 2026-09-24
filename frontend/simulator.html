@@ -281,8 +281,8 @@ footer code{font-family:var(--mono);color:#7dd3fc}
       manifests, endpoints, databases and policies used by the project, all running on your machine at
       <code style="font-family:var(--mono);color:#7dd3fc">127.0.0.1</code>. Press <b>Run pipeline</b> to walk it
       top-to-bottom (stages light up left-to-right); or click any stage in the rail to inspect it. Below the
-      simulator: eight maps — local stack, LangGraph pipeline, fused RAG, policy &amp; approval gates,
-      MCP execution, scenario registry, detection flow and the technology inventory.</p>
+      simulator: nine maps — local stack, LangGraph pipeline, fused RAG, policy &amp; approval gates,
+      MCP execution, scenario registry, detection flow, the technology inventory and where the LLM is used.</p>
     </div>
     <div class="chips">
       <span class="chip">🐍 fastapi · pydantic</span><span class="chip">🧭 langgraph</span>
@@ -358,7 +358,7 @@ footer code{font-family:var(--mono);color:#7dd3fc}
           <text x="484" y="174" text-anchor="middle" font-size="12.5" font-weight="800" fill="#f5d0fe">docker/langfuse-compose.yml</text>
           <text x="484" y="194" text-anchor="middle" font-size="9.5" fill="#94a3b8" class="mono">langfuse web :3000 · its own postgres :5433</text>
           <text x="484" y="210" text-anchor="middle" font-size="9.5" fill="#94a3b8" class="mono">clickhouse · redis · minio :9092/:9093</text>
-          <text x="484" y="224" text-anchor="middle" font-size="9" fill="#f5d0fe" class="mono">self-hosted, like  — project "ai-observability"</text></g>
+          <text x="484" y="224" text-anchor="middle" font-size="9" fill="#f5d0fe" class="mono">self-hosted — project "ai-observability"</text></g>
 
         <!-- kind -->
         <g class="node-g"><rect x="330" y="244" rx="16" width="308" height="84" class="lg-node" stroke="#fbbf24"/>
@@ -415,7 +415,7 @@ footer code{font-family:var(--mono);color:#7dd3fc}
           <marker id="l-vio" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0L10,5L0,10z" fill="#a78bfa"/></marker>
           <marker id="l-amb" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0L10,5L0,10z" fill="#fbbf24"/></marker>
         </defs>
-        <text x="530" y="24" text-anchor="middle" font-size="12.5" font-weight="800" fill="#cbd5e1">🧭 like : one compiled StateGraph — detect → investigate → rag_retrieve → diagnose/risk → gate → finalize</text>
+        <text x="530" y="24" text-anchor="middle" font-size="12.5" font-weight="800" fill="#cbd5e1">🧭 one compiled StateGraph — detect → investigate → rag_retrieve → diagnose/risk → gate → finalize</text>
 
         <!-- detect -->
         <g class="node-g"><rect x="40" y="170" rx="10" width="200" height="86" class="lg-node" stroke="#38bdf8"/>
@@ -746,6 +746,33 @@ footer code{font-family:var(--mono);color:#7dd3fc}
     </div>
   </section>
 
+  <!-- ============ 9 · LLM USAGE ============ -->
+  <section class="map" id="llm">
+    <div class="sec-head"><span class="idx">MAP 09</span><h3>Where the LLM is used — and where it is not</h3></div>
+    <p class="sec-sub">One facade, <code>backend/services/llm.py</code>, serves three providers — <b>mock</b> (deterministic, always
+    works offline), <b>openai</b> (any OpenAI-compatible endpoint, also vLLM/llama.cpp) and <b>ollama</b> (local). The model is used
+    <em>only</em> for reasoning: explain, summarise, propose. It never executes anything.</p>
+    <div class="glass">
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;padding:4px">
+        <div class="stack"><b>✍️ diagnose — LangGraph node</b>
+          <span class="sitem"><i class="cd c2"></i><span class="sd">LLM writes structured JSON diagnosis from evidence + RAG context (<code class="mono">llm.py::diagnose</code>)</span></span>
+          <span class="sitem"><i class="cd c1"></i><span class="sd">mock mode produces the same shape deterministically</span></span></div>
+        <div class="stack"><b>🎲 assess_risk — risk oracle</b>
+          <span class="sitem"><i class="cd c3"></i><span class="sd">risk is computed by a deterministic bound (<code class="mono">_risk_for</code>) — the model never sets risk unchecked</span></span>
+          <span class="sitem"><i class="cd c4"></i><span class="sd">LLM input is advisory; the policy engine is authoritative</span></span></div>
+        <div class="stack"><b>🛡 security scanner — advisory prose</b>
+          <span class="sitem"><i class="cd c1"></i><span class="sd">per-finding paragraph: what the issue is, why it matters, a proposed remedy (<code class="mono">llm.py::diagnose_finding</code>)</span></span>
+          <span class="sitem"><i class="cd c2"></i><span class="sd">ends with “POLICY ENGINE AUTHORITATIVE — LLM IS ADVISORY ONLY.”</span></span></div>
+        <div class="stack"><b>🔭 everywhere else — traced, not trusted</b>
+          <span class="sitem"><i class="cd c4"></i><span class="sd">every LLM / graph / MCP call is traced to self-hosted Langfuse (<code class="mono">tracer.py</code>)</span></span>
+          <span class="sitem"><i class="cd c3"></i><span class="sd">highlight: assume-breach guard (<code class="mono">llm.py::_assume_breach</code>)</span></span></div>
+      </div>
+      <p style="margin:16px 0 0;padding-top:14px;border-top:1px solid var(--line);font-size:12.5px;color:#a7f3d0;line-height:1.7">
+        <b>Never the model:</b> no shell, no kubectl, no deployment changes, no secrets leakage. Execution happens only through
+        <b>MCP</b> after the <b>policy engine</b> decides and a <b>human</b> approves — fail-closed on 127.0.0.1.</p>
+    </div>
+  </section>
+
   <div class="cheat">
     <div>
       <h4>⚡ cheat sheet — commands you actually use</h4>
@@ -756,7 +783,7 @@ footer code{font-family:var(--mono);color:#7dd3fc}
     </div>
     <div>
       <h4>🧭 how this page maps to the repo</h4>
-      <p>Maps 01-08 trace <code>scripts/</code> · <code>docker/</code> · <code>kubernetes/</code> · <code>monitoring/</code> · <code>backend/</code> exactly; the rail
+      <p>Maps 01-09 trace <code>scripts/</code> · <code>docker/</code> · <code>kubernetes/</code> · <code>monitoring/</code> · <code>backend/</code> exactly; the rail
       above replays <code>backend/graph.py</code>; verdicts come from <code>backend/policy/engine.py</code>; every change runs
       through <code>backend/mcp/</code> after human approval — fail-closed. The simulator replays the same logic the
       tests lock in (85 passing).</p>
@@ -776,7 +803,7 @@ const STAGES = [
   {
     key:'preflight', n:1, icon:'🧰', title:'Preflight & local stack — run_stack.sh stack up',
     tag:'LOCAL STACK', color:'sky',
-    blurb:'run_stack.sh preflights .env, then brings up the whole observability stack via docker compose — all bound to 127.0.0.1. Grafana gained a provisioned "AI Observability" dashboard in this release; Langfuse is self-hosted through langfuse-compose like .',
+    blurb:'run_stack.sh preflights .env, then brings up the whole observability stack via docker compose — all bound to 127.0.0.1. Grafana gained a provisioned "AI Observability" dashboard in this release; Langfuse is self-hosted through langfuse-compose.',
     flow:[
       {t:'preflight .env',d:'bash scripts/run_stack.sh stack up'},
       {t:'docker-compose up',d:'docker/docker-compose.yml — healthchecks'},

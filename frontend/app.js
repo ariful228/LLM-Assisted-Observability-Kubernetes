@@ -77,16 +77,16 @@ async function refresh() {
   $("#approval-badge").textContent = pending.length;
 
   const cards = [
-    ["Total Incidents", stats.total_incidents],
-    ["Active", open.length],
-    ["Pending Approvals", pending.length],
-    ["Auto Remediated", stats.autos],
-    ["Human Approved", stats.approved],
-    ["AI Investigations", ai.length],
-    ["Verification Failed", stats.verification_failed],
+    ["🧰", "Total Incidents", stats.total_incidents, ""],
+    ["🔥", "Active", open.length, "tone-danger"],
+    ["⚖", "Pending Approvals", pending.length, "tone-warn"],
+    ["🤖", "Auto Remediated", stats.autos, "tone-ok"],
+    ["👤", "Human Approved", stats.approved, "tone-ok"],
+    ["🧠", "AI Investigations", ai.length, "tone-violet"],
+    ["❌", "Verification Failed", stats.verification_failed, "tone-danger"],
   ];
   $("#dashboard-cards").innerHTML = cards
-    .map(([l, v]) => `<div class="card"><div class="value">${v}</div><div class="label">${l}</div></div>`)
+    .map(([ic, l, v, tone]) => `<div class="card ${tone}"><div class="ico">${ic}</div><div class="value">${v}</div><div class="label">${l}</div></div>`)
     .join("");
 
   const filter = (n) => all.slice(0, n);
@@ -116,13 +116,13 @@ function renderDashSecurity(secStats, secFindings) {
   const waiting = s.by_status && (s.by_status.AWAITING_APPROVAL || 0);
   const remediated = s.by_status && (s.by_status.REMEDIATED || 0);
   const cards = [
-    ["Findings", s.total],
-    ["Critical", s.by_severity.critical || 0],
-    ["High", s.by_severity.high || 0],
-    ["Remediated", remediated],
-    ["Awaiting approval", waiting],
+    ["🛡", "Findings", s.total, "tone-violet"],
+    ["⛔", "Critical", s.by_severity.critical || 0, "tone-danger"],
+    ["⚠️", "High", s.by_severity.high || 0, "tone-warn"],
+    ["✅", "Remediated", remediated, "tone-ok"],
+    ["⏳", "Awaiting approval", waiting, "tone-warn"],
   ];
-  target.innerHTML = cards.map(([l, v]) => `<div class="card"><div class="value">${v}</div><div class="label">${l}</div></div>`).join("");
+  target.innerHTML = cards.map(([ic, l, v, tone]) => `<div class="card ${tone}"><div class="ico">${ic}</div><div class="value">${v}</div><div class="label">${l}</div></div>`).join("");
 }
 
 function renderDashVerification(stats, all, verified, failed) {
@@ -131,14 +131,14 @@ function renderDashVerification(stats, all, verified, failed) {
   const approved = stats.approved || 0;
   const rejected = stats.rejected || 0;
   const cards = [
-    ["Auto Remediations", auto],
-    ["Human Approved", approved],
-    ["Rejected", rejected],
-    ["Incidents Verified (PASSED)", verified],
-    ["Verification Failed", failed],
-    ["Open (awaiting / verification failed)", all.filter((i) => i.status === "AWAITING_APPROVAL" || i.status === "VERIFICATION_FAILED").length],
+    ["🤖", "Auto Remediations", auto, "tone-ok"],
+    ["👤", "Human Approved", approved, "tone-ok"],
+    ["🚫", "Rejected", rejected, "tone-danger"],
+    ["✅", "Incidents Verified (PASSED)", verified, "tone-ok"],
+    ["❌", "Verification Failed", failed, "tone-danger"],
+    ["⏳", "Open (awaiting / verification failed)", all.filter((i) => i.status === "AWAITING_APPROVAL" || i.status === "VERIFICATION_FAILED").length, "tone-warn"],
   ];
-  target.innerHTML = cards.map(([l, v]) => `<div class="card"><div class="value">${v}</div><div class="label">${l}</div></div>`).join("");
+  target.innerHTML = cards.map(([ic, l, v, tone]) => `<div class="card ${tone}"><div class="ico">${ic}</div><div class="value">${v}</div><div class="label">${l}</div></div>`).join("");
 }
 
 function renderDashSecEvents(secFindings) {
@@ -161,12 +161,17 @@ function renderDashSecEvents(secFindings) {
 async function renderCluster() {
   try {
     const c = await api("/api/cluster");
+    const single = c.nodes.length === 1;
     $("#cluster-overview").innerHTML = `
       <div class="cards">
-        <div class="card"><div class="value">${c.nodes.length}</div><div class="label">Nodes</div></div>
+        <div class="card tone-ok"><div class="value">${c.nodes.length}</div><div class="label">Nodes${single ? " · single-node kind" : ""}</div></div>
         <div class="card"><div class="value">${c.pod_count}</div><div class="label">Pods</div></div>
-        <div class="card"><div class="value">${c.running_pods}</div><div class="label">Running</div></div>
-        <div class="card"><div class="value">${c.failed_pods}</div><div class="label">Not healthy</div></div>
+        <div class="card tone-ok"><div class="value">${c.running_pods}</div><div class="label">Running</div></div>
+        <div class="card ${c.failed_pods ? "tone-danger" : "tone-ok"}"><div class="value">${c.failed_pods}</div><div class="label">Not healthy</div></div>
+      </div>
+      <div style="margin:12px 0 14px;font-size:12px;color:var(--muted);border:1px dashed var(--border);border-radius:10px;padding:9px 12px;line-height:1.6">
+        🧊 <b style="color:#fde68a">kind cluster “ai-observability-local”</b> runs as a single node (
+        <code style="color:var(--accent)">kubernetes/kind/kind-cluster.yaml</code> — one control-plane, no workers) so the whole demo fits on a laptop. Add worker lines to that file to make it multi-node.
       </div>
       <table class="table"><thead><tr><th>Deployment</th><th>Replicas</th><th>Ready</th><th>Mode</th></tr></thead>
       <tbody>${c.deployments.map((d) => `<tr><td>${esc(d.name)}</td><td>${d.replicas}</td><td>${d.ready}/${d.available}</td><td>${esc(c.mode)}</td></tr>`).join("")}</tbody></table>`;

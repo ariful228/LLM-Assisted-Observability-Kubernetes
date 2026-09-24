@@ -8,58 +8,74 @@
 </head>
 <body>
   <header class="topbar">
-    <div class="brand">🛰️ AI O11y · Kubernetes</div>
+    <div class="brand">
+      <span class="brand-mark">🛰️</span>
+      <span class="brand-text"><b>AI O11y</b><small>for Kubernetes</small></span>
+    </div>
     <nav>
-      <button data-view="dashboard" class="active">Dashboard</button>
-      <button data-view="workflow">Workflow Sim</button>
-      <button data-view="incidents">Incidents</button>
-      <button data-view="security">Security</button>
-      <button data-view="approvals">Approvals <span id="approval-badge" class="badge">0</span></button>
-      <button data-view="tools">MCP Tools</button>
-      <button data-view="knowledge">Knowledge/RAG</button>
-      <button data-view="logs">Application Logs</button>
-      <button data-view="status">System</button>
+      <button data-view="dashboard" class="active">📊 Dashboard</button>
+      <button data-view="workflow">▶ Workflow Sim</button>
+      <button data-view="incidents">🚨 Incidents</button>
+      <button data-view="security">🛡 Security</button>
+      <button data-view="approvals">⚖ Approvals <span id="approval-badge" class="badge">0</span></button>
+      <button data-view="tools">🔧 MCP Tools</button>
+      <button data-view="knowledge">📚 Knowledge/RAG</button>
+      <button data-view="logs">📄 Application Logs</button>
+      <button data-view="status">⚙ System</button>
       <a class="nav-sim" href="/static/simulator.html" target="_blank">Pipeline Simulator ↗</a>
     </nav>
     <div class="topbar-right">
       <span id="mode-pill" class="pill">simulated</span>
-      <button id="btn-detect" class="primary small">Run Detection</button>
+      <button id="btn-detect" class="primary small">⚡ Run Detection</button>
     </div>
   </header>
 
   <main id="app">
     <section id="view-dashboard" class="view active">
-      <h2>Cluster Dashboard</h2>
+      <div class="dash-hero">
+        <div class="dash-hero-text">
+          <h1>Kubernetes Observability &amp; Security</h1>
+          <p>LLM <b>proposes</b> · policy engine <b>decides</b> · humans <b>approve</b> · MCP <b>executes &amp; verifies</b> — every path is traced and everything runs locally on <code>127.0.0.1</code>.</p>
+        </div>
+        <div class="hero-chips">
+          <span class="chip">🧊 single-node kind cluster</span>
+          <span class="chip">🛡 policy engine · fail-closed</span>
+          <span class="chip">✍ LLM advisory only</span>
+          <span class="chip">🔭 langfuse self-hosted</span>
+        </div>
+      </div>
       <div class="dash-section">
         <div class="sec-event-head"><h3 style="margin:0">Active Incidents · Approvals · AI Investigations</h3></div>
         <div class="cards" id="dashboard-cards"></div>
       </div>
       <div class="dash-grid">
         <div class="dash-col">
-          <h3>Cluster Health</h3>
+          <h3><span class="ico">🧊</span> Cluster Health <span class="mini-chip" title="kind cluster · ai-observability-local">single node</span></h3>
           <div id="cluster-overview"></div>
         </div>
         <div class="dash-col">
-          <h3>Security Posture</h3>
+          <h3><span class="ico">🛡</span> Security Posture</h3>
           <div id="dash-security" class="cards dash-cards"></div>
         </div>
       </div>
       <div class="dash-grid">
         <div class="dash-col">
-          <h3>Remediation &amp; Verification</h3>
+          <h3><span class="ico">✅</span> Remediation &amp; Verification</h3>
           <div id="dash-verification" class="cards dash-cards"></div>
         </div>
         <div class="dash-col">
-          <h3>Recent Security Events</h3>
+          <h3><span class="ico">📡</span> Recent Security Events</h3>
           <div id="dash-sec-events" class="sec-events"></div>
         </div>
       </div>
-      <h3>Recent Incidents</h3>
-      <div style="overflow-x:auto">
-        <table class="table" id="dashboard-incidents">
-          <thead><tr><th>ID</th><th>Type</th><th>Severity</th><th>Status</th><th>Action</th><th>Verify</th><th>Time</th></tr></thead>
-          <tbody></tbody>
-        </table>
+      <div class="dash-section">
+        <h3 style="margin-top:0">Recent Incidents</h3>
+        <div style="overflow-x:auto">
+          <table class="table" id="dashboard-incidents">
+            <thead><tr><th>ID</th><th>Type</th><th>Severity</th><th>Status</th><th>Action</th><th>Verify</th><th>Time</th></tr></thead>
+            <tbody></tbody>
+          </table>
+        </div>
       </div>
     </section>
 
