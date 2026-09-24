@@ -1,0 +1,86 @@
+# Aggregation layer sample. In this research prototype the event sources are
+# simulated by the backend (backend/services/simulation.py) so that the whole
+# flow runs on a laptop with no cluster. When integrating the real pipeline,
+# Falco and the audit-log generator feed the aggregator which forwards to
+# OpenSearch + the platform ingest endpoint.
+
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: observability-aggregator
+  namespace: ai-observability-demo
+  labels:
+    app: observability-aggregator
+spec:
+  replicas: 1
+  selector: { matchLabels: { app: observability-aggregator } }
+  template:
+    metadata:
+      labels: { app: observability-aggregator }
+    spec:
+      serviceAccountName: observability-aggregator
+      containers:
+        - name: falco
+          image: falcosecurity/falco:0.39.0
+          args: ["/usr/bin/falco", "-r", "/etc/falco/rules", "--disable-source=k8s_audit"]
+          env:
+            - name: USE_ENGINE
+              value: "kmod"
+            - name: FALCO_BPF_PROBE
+              value: ""
+          securityContext:
+            privileged: true
+          volumeMounts:
+            - name: rules
+              mountPath: /etc/falco/rules
+            - name: nsm
+              mountPath: /hack/devices
+            - name: dev
+              mountPath: /dev
+            - name: proc
+              mountPath: /host/proc
+              readOnly: true
+            - name: boot
+              mountPath: /host/boot
+              readOnly: true
+            - name: modules
+              mountPath: /host/lib/modules
+              readOnly: true
+            - name: usr
+              mountPath: /host/usr
+              readOnly: true
+          resources:
+            requests: { cpu: "100m", memory: "128Mi" }
+            limits: { cpu: "500m", memory: "512Mi" }
+        - name: auditor
+          image: busybox:1.36
+          command: ["/bin/sh", "-c", "while true; do sleep 5; done"]
+          volumeMounts:
+            - name: kube-api
+              mountPath: /var/run/secrets/kubernetes.io/serviceaccount
+              readOnly: true
+      volumes:
+        - name: rules
+          configMap: { name: falco-rules }
+        - name: nsm
+          hostPath: { path: /sys/fs/bpf }
+        - name: dev
+          hostPath: { path: /dev }
+        - name: proc
+          hostPath: { path: /proc }
+        - name: boot
+          hostPath: { path: /boot, type: Directory }
+        - name: modules
+          hostPath: { path: /lib/modules, type: Directory }
+        - name: usr
+          hostPath: { path: /usr, type: Directory }
+        - name: kube-api
+          projected:
+            sources:
+              - serviceAccountToken:
+                  path: token
+              - configMap:
+                  name: kube-root-ca.crt
+                  items: [{ key: ca.crt, path: ca.crt }]
+              - downwardAPI:
+                  items: [{ path: namespace, fieldRef: { fieldPath: metadata.namespace } }]

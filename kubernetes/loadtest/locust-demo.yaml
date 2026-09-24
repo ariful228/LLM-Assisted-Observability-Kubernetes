@@ -1,0 +1,45 @@
+# Load-test workload: a CPU-burning HTTP server that Locust can hammer.
+# On CPU pressure the HorizontalPodAutoscaler (hpa.yaml) scales replicas.
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: locust-demo
+  namespace: ai-observability-demo
+  labels: { app: locust-demo, observability.llm/scenario: load-test }
+spec:
+  replicas: 1
+  selector: { matchLabels: { app: locust-demo } }
+  template:
+    metadata:
+      labels: { app: locust-demo }
+    spec:
+      containers:
+        - name: app
+          image: ai-obsv-loadgen:latest
+          imagePullPolicy: IfNotPresent
+          env:
+            - name: BURN_MS
+              value: "100"
+          ports: [{ containerPort: 8080 }]
+          readinessProbe:
+            httpGet: { path: /readyz, port: 8080 }
+            initialDelaySeconds: 2
+            periodSeconds: 5
+          resources:
+            requests: { cpu: "200m", memory: "64Mi" }
+            limits: { cpu: "1", memory: "256Mi" }
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: locust-demo
+  namespace: ai-observability-demo
+  labels:
+    app: locust-demo
+spec:
+  type: ClusterIP
+  selector: { app: locust-demo }
+  ports:
+    - name: http
+      port: 80
+      targetPort: 8080

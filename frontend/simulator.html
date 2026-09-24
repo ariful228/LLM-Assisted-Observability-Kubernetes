@@ -1,0 +1,1169 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>LLM-Assisted Observability &amp; Security for Kubernetes — Live Pipeline Simulator</title>
+<style>
+:root{
+  --bg:#070b16; --bg2:#0b1122; --panel:rgba(255,255,255,.035); --panel2:rgba(255,255,255,.06);
+  --line:rgba(148,163,184,.16); --line2:rgba(148,163,184,.28);
+  --txt:#e6edf7; --mut:#8b98ad; --mut2:#64748b;
+  --sky:#38bdf8; --vio:#a78bfa; --emr:#34d399; --amb:#fbbf24; --ros:#fb7185;
+  --cyan:#22d3ee; --fuc:#e879f9; --lim:#a3e635; --org:#fb923c; --tea:#2dd4bf;
+  --mono:'SF Mono','Cascadia Code',Consolas,'Roboto Mono',monospace;
+  --sans:'Inter',-apple-system,'Segoe UI',Roboto,Ubuntu,sans-serif;
+}
+*{box-sizing:border-box;margin:0;padding:0}
+html{scroll-behavior:smooth}
+body{
+  font-family:var(--sans); background:var(--bg); color:var(--txt); min-height:100vh; overflow-x:hidden;
+  background-image:
+    radial-gradient(1100px 500px at 85% -10%, rgba(56,189,248,.10), transparent 60%),
+    radial-gradient(900px 500px at -10% 15%, rgba(167,139,250,.10), transparent 60%),
+    radial-gradient(900px 600px at 50% 110%, rgba(52,211,153,.07), transparent 60%);
+}
+body::before{
+  content:""; position:fixed; inset:0; z-index:0; pointer-events:none;
+  background-image:linear-gradient(rgba(148,163,184,.045) 1px,transparent 1px),
+    linear-gradient(90deg,rgba(148,163,184,.045) 1px,transparent 1px);
+  background-size:44px 44px; mask-image:radial-gradient(ellipse 90% 70% at 50% 0%,#000 40%,transparent 100%);
+}
+.wrap{position:relative;z-index:1;max-width:1440px;margin:0 auto;padding:0 22px}
+
+/* ============ HEADER ============ */
+header.top{
+  position:sticky;top:0;z-index:50;backdrop-filter:blur(14px);
+  background:linear-gradient(180deg,rgba(7,11,22,.92),rgba(7,11,22,.75));
+  border-bottom:1px solid var(--line);
+}
+.top-in{max-width:1440px;margin:0 auto;padding:13px 22px;display:flex;align-items:center;gap:18px;flex-wrap:wrap}
+.logo{display:flex;align-items:center;gap:12px;min-width:0}
+.logo-mark{
+  width:42px;height:42px;border-radius:12px;flex:0 0 auto;display:grid;place-items:center;font-size:20px;
+  background:linear-gradient(135deg,#0ea5e9,#7c3aed 55%,#34d399);box-shadow:0 0 24px rgba(124,58,237,.45);
+}
+.logo h1{
+  font-size:19px;font-weight:800;letter-spacing:.2px;white-space:nowrap;
+  background:linear-gradient(90deg,#7dd3fc,#c4b5fd 45%,#6ee7b7);
+  -webkit-background-clip:text;background-clip:text;color:transparent;
+}
+.logo p{font-size:11px;color:var(--mut);margin-top:1px;white-space:nowrap}
+.ctrls{display:flex;align-items:center;gap:9px;margin-left:auto;flex-wrap:wrap}
+.btn{
+  border:1px solid var(--line2);background:var(--panel2);color:var(--txt);font-family:var(--sans);
+  font-size:13px;font-weight:600;padding:9px 16px;border-radius:10px;cursor:pointer;transition:.18s;
+  display:inline-flex;align-items:center;gap:7px;
+}
+.btn:hover{border-color:rgba(125,211,252,.55);background:rgba(56,189,248,.12);transform:translateY(-1px)}
+.btn.play{border-color:rgba(52,211,153,.5);background:rgba(52,211,153,.12);color:#a7f3d0}
+.btn.play:hover{box-shadow:0 0 18px rgba(52,211,153,.25)}
+.btn.playing{border-color:rgba(251,191,36,.5);background:rgba(251,191,36,.12);color:#fde68a}
+.seg{display:flex;border:1px solid var(--line2);border-radius:10px;overflow:hidden}
+.seg button{
+  border:0;background:transparent;color:var(--mut);padding:9px 13px;font-size:12px;font-weight:700;
+  cursor:pointer;font-family:var(--sans);transition:.15s;
+}
+.seg button.on{background:rgba(56,189,248,.18);color:#7dd3fc}
+.stage-pill{
+  font-family:var(--mono);font-size:12px;color:#7dd3fc;border:1px solid rgba(56,189,248,.35);
+  background:rgba(56,189,248,.08);padding:8px 13px;border-radius:10px;white-space:nowrap;
+}
+.live-dot{width:8px;height:8px;border-radius:50%;background:#34d399;box-shadow:0 0 10px #34d399;animation:blink 1.1s infinite}
+.live-dot.off{background:#64748b;box-shadow:none;animation:none}
+@keyframes blink{50%{opacity:.25}}
+
+/* ============ HERO STRIP ============ */
+.hero{padding:30px 0 8px;display:flex;align-items:flex-end;justify-content:space-between;gap:18px;flex-wrap:wrap}
+.hero h2{font-size:26px;font-weight:800;letter-spacing:.2px}
+.hero h2 span{background:linear-gradient(90deg,#38bdf8,#a78bfa);-webkit-background-clip:text;background-clip:text;color:transparent}
+.hero p{color:var(--mut);font-size:13.5px;margin-top:5px;max-width:760px;line-height:1.6}
+.chips{display:flex;gap:8px;flex-wrap:wrap}
+.chip{
+  font-family:var(--mono);font-size:11px;padding:6px 11px;border-radius:999px;border:1px solid var(--line2);
+  color:var(--mut);background:var(--panel);transition:.18s;
+}
+.chip:hover{color:var(--txt);border-color:rgba(125,211,252,.5);transform:translateY(-1px)}
+
+/* ============ SIMULATOR LAYOUT ============ */
+.sim{display:grid;grid-template-columns:250px 1fr;gap:18px;margin:22px 0 10px}
+@media(max-width:1000px){.sim{grid-template-columns:1fr}}
+
+/* rail */
+.rail{display:flex;flex-direction:column;gap:6px}
+.rail .rail-h{font-size:11px;font-weight:800;letter-spacing:.14em;color:var(--mut2);text-transform:uppercase;padding:4px 10px 8px}
+.rail-item{
+  display:flex;align-items:center;gap:11px;padding:10px 12px;border-radius:11px;cursor:pointer;
+  border:1px solid transparent;transition:.16s;position:relative;
+}
+.rail-item:hover{background:var(--panel)}
+.rail-item .num{
+  width:26px;height:26px;border-radius:8px;flex:0 0 auto;display:grid;place-items:center;
+  font-family:var(--mono);font-size:11px;font-weight:700;border:1px solid var(--line2);color:var(--mut);
+  background:var(--panel);transition:.2s;
+}
+.rail-item .lbl{font-size:12.5px;font-weight:600;color:var(--mut);transition:.2s;line-height:1.25}
+.rail-item .sub{font-size:10px;color:var(--mut2);font-family:var(--mono);margin-top:1px}
+.rail-item.active{background:linear-gradient(90deg,rgba(56,189,248,.14),rgba(56,189,248,.03));border-color:rgba(56,189,248,.35)}
+.rail-item.active .num{background:rgba(56,189,248,.2);border-color:rgba(56,189,248,.6);color:#7dd3fc;box-shadow:0 0 12px rgba(56,189,248,.3)}
+.rail-item.active .lbl{color:#fff}
+.rail-item.done .num{background:rgba(52,211,153,.15);border-color:rgba(52,211,153,.45);color:#6ee7b7}
+.rail-item.done .lbl{color:var(--mut)}
+.rail-item.now .num::after{content:""}
+.progress{height:5px;border-radius:99px;background:var(--panel2);overflow:hidden;margin:8px 4px 4px}
+.progress i{display:block;height:100%;width:0;border-radius:99px;background:linear-gradient(90deg,#38bdf8,#a78bfa,#34d399);transition:width .5s}
+
+/* stage viewport */
+.stage-view{
+  border:1px solid var(--line);border-radius:20px;background:linear-gradient(180deg,rgba(255,255,255,.045),rgba(255,255,255,.015));
+  overflow:hidden;position:relative;min-height:560px;
+}
+.stage-view::before{
+  content:"";position:absolute;inset:0;pointer-events:none;border-radius:20px;
+  background:radial-gradient(600px 200px at var(--gx,50%) -20%,var(--gc,rgba(56,189,248,.14)),transparent 70%);
+  transition:.6s;
+}
+.sv-head{padding:22px 26px 0;display:flex;align-items:flex-start;gap:16px;flex-wrap:wrap}
+.sv-badge{
+  font-family:var(--mono);font-size:11px;font-weight:700;letter-spacing:.1em;text-transform:uppercase;
+  padding:7px 13px;border-radius:999px;border:1px solid;white-space:nowrap;
+}
+.sv-title{flex:1;min-width:220px}
+.sv-title h3{font-size:21px;font-weight:800;display:flex;align-items:center;gap:10px}
+.sv-title p{color:var(--mut);font-size:13px;margin-top:5px;line-height:1.55;max-width:900px}
+.sv-body{padding:20px 26px 10px}
+.sv-sec{font-size:10.5px;font-weight:800;letter-spacing:.16em;text-transform:uppercase;color:var(--mut2);margin:16px 0 10px}
+
+/* flow chips */
+.flow{display:flex;align-items:stretch;gap:0;flex-wrap:wrap;row-gap:12px}
+.fnode{
+  position:relative;display:flex;flex-direction:column;justify-content:center;gap:3px;
+  padding:11px 15px;border-radius:13px;border:1px solid var(--line);background:var(--panel);
+  min-width:130px;max-width:230px;opacity:.28;transform:translateY(6px);transition:.35s;
+}
+.fnode .t{font-size:12.5px;font-weight:700}
+.fnode .d{font-size:10.5px;color:var(--mut);font-family:var(--mono);line-height:1.45}
+.fnode.lit{opacity:1;transform:none;border-color:var(--fc,rgba(56,189,248,.6));background:linear-gradient(180deg,var(--fg,rgba(56,189,248,.13)),rgba(255,255,255,.02));box-shadow:0 6px 22px -8px var(--fc,rgba(56,189,248,.4))}
+.fnode.lit .t{color:var(--ft,#7dd3fc)}
+.farrow{
+  display:flex;align-items:center;padding:0 7px;color:var(--mut2);opacity:.25;transition:.3s;font-size:15px;align-self:center;
+}
+.farrow.lit{opacity:1;color:var(--ft,#7dd3fc)}
+.farrow::after{content:"⟶"}
+
+/* data cards */
+.cards{display:grid;grid-template-columns:repeat(auto-fit,minmax(215px,1fr));gap:10px}
+.card{
+  border:1px solid var(--line);border-radius:13px;padding:13px 15px;background:var(--panel);
+  opacity:0;transform:translateY(8px);transition:.4s;
+}
+.card.in{opacity:1;transform:none}
+.card .k{font-size:10px;font-weight:800;letter-spacing:.13em;text-transform:uppercase;color:var(--mut2);display:flex;align-items:center;gap:6px}
+.card .v{font-family:var(--mono);font-size:12px;color:#bae6fd;margin-top:6px;word-break:break-all;line-height:1.5}
+.card .v.green{color:#a7f3d0}.card .v.amber{color:#fde68a}.card .v.rose{color:#fda4af}.card .v.vio{color:#ddd6fe}
+
+/* console */
+.console{
+  margin:16px 0 0;border:1px solid var(--line);border-radius:16px;overflow:hidden;
+  background:rgba(2,6,17,.85);grid-column:1/-1;
+}
+.con-head{
+  display:flex;align-items:center;gap:9px;padding:10px 16px;border-bottom:1px solid var(--line);
+  background:rgba(255,255,255,.03);
+}
+.con-head .dots{display:flex;gap:6px}
+.con-head .dots i{width:11px;height:11px;border-radius:50%}
+.con-head .dots i:nth-child(1){background:#fb7185}.con-head .dots i:nth-child(2){background:#fbbf24}.con-head .dots i:nth-child(3){background:#34d399}
+.con-head span{font-family:var(--mono);font-size:11.5px;color:var(--mut)}
+.con-clear{margin-left:auto;background:none;border:0;color:var(--mut2);font-size:11px;cursor:pointer;font-family:var(--mono)}
+.con-clear:hover{color:var(--txt)}
+#conlog{
+  height:230px;overflow-y:auto;padding:13px 18px;font-family:var(--mono);font-size:12px;line-height:1.85;
+  scrollbar-width:thin;scrollbar-color:var(--line2) transparent;
+}
+#conlog .ln{display:flex;gap:10px;opacity:0;animation:lin .25s forwards}
+@keyframes lin{to{opacity:1}}
+#conlog .ts{color:#475569;flex:0 0 auto}
+#conlog .tag{flex:0 0 74px;font-weight:700}
+#conlog .m{color:#c9d5e8;word-break:break-word}
+.ln.cmd .tag{color:#7dd3fc}.ln.cmd .m{color:#93c5fd}
+.ln.ok .tag{color:#6ee7b7}.ln.ok .m{color:#a7f3d0}
+.ln.io .tag{color:#fbbf24}
+.ln.llm .tag{color:#e879f9}.ln.llm .m{color:#f5d0fe}
+.ln.net .tag{color:#22d3ee}
+.ln.db .tag{color:#fdba74}
+.ln.warn .tag{color:#fb923c}.ln.warn .m{color:#fdba74}
+.ln.info .tag{color:#94a3b8}
+.ln.sec .tag{color:#fda4af}
+
+.done-banner{
+  display:none;margin:14px 0 0;padding:16px 20px;border-radius:14px;border:1px solid rgba(52,211,153,.4);
+  background:linear-gradient(90deg,rgba(52,211,153,.12),rgba(52,211,153,.02));font-size:13.5px;color:#a7f3d0;
+}
+.done-banner.show{display:block;animation:lin .4s}
+
+/* ============ SECTION SHELL ============ */
+section.map{margin:56px 0}
+.sec-head{display:flex;align-items:baseline;gap:14px;flex-wrap:wrap;margin-bottom:6px}
+.sec-head .idx{font-family:var(--mono);font-size:12px;color:#7dd3fc;border:1px solid rgba(56,189,248,.35);border-radius:8px;padding:4px 9px;background:rgba(56,189,248,.07)}
+.sec-head h3{font-size:22px;font-weight:800}
+.sec-sub{color:var(--mut);font-size:13px;margin:4px 0 20px;max-width:860px;line-height:1.6}
+.glass{
+  border:1px solid var(--line);border-radius:20px;padding:24px;
+  background:linear-gradient(180deg,rgba(255,255,255,.04),rgba(255,255,255,.012));
+}
+svg text{font-family:var(--sans)}
+svg .mono{font-family:var(--mono)}
+
+/* ============ GRAPH MAP ============ */
+.lg-legend{display:flex;gap:16px;flex-wrap:wrap;margin:14px 0 4px}
+.lg-legend span{display:inline-flex;align-items:center;gap:7px;font-size:11.5px;color:var(--mut);font-family:var(--mono)}
+.lg-legend i{width:10px;height:10px;border-radius:3px}
+.node-g{filter:url(#glow)}
+.lg-node{fill:url(#ngGrad);stroke-width:1.4}
+.lg-pulse{fill:#fff;filter:blur(1px);opacity:.9}
+
+/* ============ SCENARIO GRID ============ */
+.scen{display:table;width:100%;border-collapse:separate;border-spacing:0 7px}
+.scrow{display:table-row}
+.scrow>span{display:table-cell;padding:10px 14px;border:1px solid var(--line)}
+.scrow>.s-sel{width:44px;text-align:center;border-right-width:0;color:var(--mut2);font-size:11px}
+.scrow>.s-tag{width:150px;font-family:var(--mono);font-size:11.5px;color:#7dd3fc;border-right-width:0}
+.scrow>.s-al{width:auto;font-size:13px;border-right-width:0}
+.scrow>.s-po{width:170px;text-align:center;border-right-width:0;color:#fde68a;font-size:12px}
+.scrow>.s-de{width:140px;text-align:center;border-right-width:0;color:#a7f3d0;font-size:13px}
+.scrow>.s-ac{width:auto;text-align:right;color:#e6edf7;font-size:12.5px}
+.scrow.sc-h>span{background:rgba(255,255,255,.03);color:var(--mut2);font-size:11px;font-weight:700;letter-spacing:.12em}
+.scrow:not(.sc-h)>span{border-radius:10px}
+
+/* ============ STACK GRID ============ */
+.stack{border:1px solid var(--line);border-radius:14px;padding:14px 16px;background:var(--panel)}
+.stack b{font-size:12.5px;display:block;margin-bottom:9px;color:#e6edf7}
+.sitem{display:flex;align-items:center;gap:9px;padding:4.5px 0;font-size:11.5px;color:var(--mut)}
+.sitem .sd{flex:1;min-width:0}
+.cd{width:8px;height:8px;border-radius:2px;flex:none}
+.c1{background:#38bdf8}.c2{background:#34d399}.c3{background:#e879f9}.c4{background:#fbbf24}
+
+/* footer */
+footer{margin:64px 0 30px;border-top:1px solid var(--line);padding-top:22px;color:var(--mut2);font-size:12px;display:flex;justify-content:space-between;gap:14px;flex-wrap:wrap}
+footer code{font-family:var(--mono);color:#7dd3fc}
+/* ============ CHEAT / COMMANDS ============ */
+.cheat{display:grid;grid-template-columns:repeat(2,1fr);gap:22px;align-items:start;margin:6px 0 0;padding:20px 24px;border:1px solid var(--line);border-radius:16px;background:var(--panel)}
+.cheat h4{margin:0 0 8px;font-size:12.5px;color:#e6edf7;letter-spacing:.02em}
+.cheat p{margin:0;font-size:12.5px;line-height:1.8;color:var(--mut)}
+.cheat code{font-family:var(--mono);color:#7dd3fc}
+</style>
+</head>
+<body>
+
+<header class="top"><div class="top-in">
+  <div class="logo">
+    <div class="logo-mark">🛰️</div>
+    <div><h1>LLM-Assisted Observability for Kubernetes — Pipeline Simulator</h1><p>everything local · detect → LangGraph → fused RAG → policy → approval → MCP execute → verify → trace</p></div>
+  </div>
+  <div class="ctrls">
+    <span class="stage-pill" id="stagePill"><span class="live-dot off" id="liveDot"></span>&nbsp;idle · stage 1/10</span>
+    <div class="seg" id="speedSeg">
+      <button data-s="1" class="on">1×</button><button data-s="2">2×</button><button data-s="4">4×</button>
+    </div>
+    <button class="btn play" id="btnPlay">▶ Run pipeline</button>
+    <button class="btn" id="btnReset">↺ Reset</button>
+  </div>
+</div></header>
+
+<div class="wrap">
+
+  <!-- HERO -->
+  <div class="hero">
+    <div>
+      <h2>The whole <span>detect → remediate</span> journey, start → end</h2>
+      <p>A faithful, animated simulation of the real repository — every stage below shows the exact scripts,
+      manifests, endpoints, databases and policies used by the project, all running on your machine at
+      <code style="font-family:var(--mono);color:#7dd3fc">127.0.0.1</code>. Press <b>Run pipeline</b> to walk it
+      top-to-bottom (stages light up left-to-right); or click any stage in the rail to inspect it. Below the
+      simulator: eight maps — local stack, LangGraph pipeline, fused RAG, policy &amp; approval gates,
+      MCP execution, scenario registry, detection flow and the technology inventory.</p>
+    </div>
+    <div class="chips">
+      <span class="chip">🐍 fastapi · pydantic</span><span class="chip">🧭 langgraph</span>
+      <span class="chip">✨ mock|openai|ollama</span><span class="chip">🔎 pgvector + opensearch + tfidf</span>
+      <span class="chip">🛡 policy engine (authoritative)</span><span class="chip">⚖ human approval</span>
+      <span class="chip">🧊 kind cluster (local)</span><span class="chip">🔭 langfuse (self-hosted)</span>
+    </div>
+  </div>
+
+  <!-- ============ SIMULATOR ============ -->
+  <div class="sim">
+    <div class="rail" id="rail"><div class="rail-h">Pipeline stages</div></div>
+
+    <div>
+      <div class="stage-view" id="stageView">
+        <div class="sv-head">
+          <span class="sv-badge" id="svBadge">STAGE</span>
+          <div class="sv-title"><h3 id="svTitle">—</h3><p id="svBlurb">Press “Run pipeline”.</p></div>
+        </div>
+        <div class="sv-body">
+          <div class="sv-sec">Flow — data moves left → right</div>
+          <div class="flow" id="svFlow"></div>
+          <div class="sv-sec">Scripts · endpoints · artifacts</div>
+          <div class="cards" id="svCards"></div>
+        </div>
+      </div>
+
+      <div class="console">
+        <div class="con-head">
+          <div class="dots"><i></i><i></i><i></i></div>
+          <span>ai-observability-kubernetes — pipeline console</span>
+          <button class="con-clear" id="conClear">clear</button>
+        </div>
+        <div id="conlog"></div>
+        <div style="padding:10px 18px;border-top:1px solid var(--line)">
+          <div class="done-banner" id="doneBanner">✔ <b>pipeline complete</b> — 10 stages · incidents detected from Grafana/Prometheus rules · evidence collected across k8s / falco / audit · diagnoses RAG-grounded in pgvector+opensearch+tf-idf · LLM proposals ruled by the policy engine (fail-closed) · humans approve · MCP tools execute and verify their own work · incidents sealed + metrics updated + Slack notified · every LLM/graph/tool call traced in self-hosted Langfuse — all local on 127.0.0.1.</div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ============ 1 · LOCAL STACK ============ -->
+  <section class="map" id="stack">
+    <div class="sec-head"><span class="idx">MAP 01</span><h3>Self-managed local stack — every service on 127.0.0.1</h3></div>
+    <p class="sec-sub">One command brings up everything: <b>scripts/run_stack.sh</b> preflights <code>.env</code>, then starts
+    <b>docker/docker-compose.yml</b> (platform, Prometheus, Grafana, OpenSearch, pgvector) and
+    <b>docker/langfuse-compose.yml</b> (self-hosted Langfuse + its Postgres/ClickHouse/Redis/MinIO). Kubernetes is a local
+    <b>kind</b> cluster; <code>kind</code> + <code>kubectl</code> live in <b>tools/bin</b> so nothing global is installed.</p>
+    <div class="glass">
+      <svg viewBox="0 0 1060 410" style="width:100%;height:auto;display:block">
+        <defs>
+          <marker id="s-sky" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0L10,5L0,10z" fill="#38bdf8"/></marker>
+          <marker id="s-vio" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0L10,5L0,10z" fill="#a78bfa"/></marker>
+          <marker id="s-emr" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0L10,5L0,10z" fill="#34d399"/></marker>
+        </defs>
+        <text x="530" y="24" text-anchor="middle" font-size="12.5" font-weight="800" fill="#cbd5e1">📦 managed entirely by scripts/run_stack.sh — stack | kube | seed | rag | run | status | all</text>
+
+        <!-- driver -->
+        <g class="node-g"><rect x="20" y="152" rx="16" width="182" height="76" class="lg-node" stroke="#38bdf8"/>
+          <text x="111" y="182" text-anchor="middle" font-size="13" font-weight="800" fill="#7dd3fc">$ bash run_stack.sh</text>
+          <text x="111" y="201" text-anchor="middle" font-size="9.5" fill="#94a3b8" class="mono">preflights .env · health probes</text>
+          <text x="111" y="217" text-anchor="middle" font-size="9.5" fill="#94a3b8" class="mono">PATH += tools/bin</text></g>
+
+        <!-- compose -->
+        <g class="node-g"><rect x="330" y="52" rx="16" width="308" height="84" class="lg-node" stroke="#34d399"/>
+          <text x="484" y="78" text-anchor="middle" font-size="12.5" font-weight="800" fill="#6ee7b7">docker/docker-compose.yml</text>
+          <text x="484" y="98" text-anchor="middle" font-size="9.5" fill="#94a3b8" class="mono">platform :8000 · prometheus :9090 · grafana :3001</text>
+          <text x="484" y="114" text-anchor="middle" font-size="9.5" fill="#94a3b8" class="mono">opensearch :9200 · pgvector :5434</text>
+          <text x="484" y="128" text-anchor="middle" font-size="9" fill="#6ee7b7" class="mono">healthchecks · volume-mounted provisioning</text></g>
+
+        <!-- langfuse -->
+        <g class="node-g"><rect x="330" y="148" rx="16" width="308" height="84" class="lg-node" stroke="#e879f9"/>
+          <text x="484" y="174" text-anchor="middle" font-size="12.5" font-weight="800" fill="#f5d0fe">docker/langfuse-compose.yml</text>
+          <text x="484" y="194" text-anchor="middle" font-size="9.5" fill="#94a3b8" class="mono">langfuse web :3000 · its own postgres :5433</text>
+          <text x="484" y="210" text-anchor="middle" font-size="9.5" fill="#94a3b8" class="mono">clickhouse · redis · minio :9092/:9093</text>
+          <text x="484" y="224" text-anchor="middle" font-size="9" fill="#f5d0fe" class="mono">self-hosted, like case-aiops — project "ai-observability"</text></g>
+
+        <!-- kind -->
+        <g class="node-g"><rect x="330" y="244" rx="16" width="308" height="84" class="lg-node" stroke="#fbbf24"/>
+          <text x="484" y="270" text-anchor="middle" font-size="12.5" font-weight="800" fill="#fde68a">kubernetes/kind/kind-cluster.yaml</text>
+          <text x="484" y="290" text-anchor="middle" font-size="9.5" fill="#94a3b8" class="mono">kind cluster "ai-observability-local" (single node)</text>
+          <text x="484" y="306" text-anchor="middle" font-size="9.5" fill="#94a3b8" class="mono">tools/bin kind 0.26 · kubectl 1.31 · falco privileged</text>
+          <text x="484" y="320" text-anchor="middle" font-size="9" fill="#fde68a" class="mono">kubectl apply namespace/rbac/demo-applications/…</text></g>
+
+        <!-- seed -->
+        <g class="node-g"><rect x="330" y="340" rx="16" width="308" height="50" class="lg-node" stroke="#a78bfa"/>
+          <text x="484" y="360" text-anchor="middle" font-size="11" font-weight="800" fill="#ddd6fe">seed_rag.py · seed_opensearch.py</text>
+          <text x="484" y="377" text-anchor="middle" font-size="9" fill="#c4b5fd" class="mono">knowledge/**/*.md → pgvector + opensearch + tfidf · demo events/falco/audit</text></g>
+
+        <!-- edges -->
+        <line x1="202" y1="178" x2="326" y2="94" stroke="#34d399" stroke-width="1.6" marker-end="url(#s-emr)" opacity=".8"/>
+        <line x1="202" y1="190" x2="326" y2="190" stroke="#e879f9" stroke-width="1.6" marker-end="url(#s-amb)" opacity=".8"/>
+        <line x1="202" y1="202" x2="326" y2="286" stroke="#fbbf24" stroke-width="1.6" marker-end="url(#s-vio)" opacity=".8"/>
+        <line x1="202" y1="214" x2="326" y2="365" stroke="#a78bfa" stroke-width="1.6" marker-end="url(#s-sky)" opacity=".8"/>
+
+        <!-- pulses -->
+        <circle r="4" fill="#34d399" class="lg-pulse"><animateMotion dur="2.2s" repeatCount="indefinite" path="M202,178 L326,94"/></circle>
+        <circle r="4" fill="#e879f9" class="lg-pulse"><animateMotion dur="2.6s" begin="0.6s" repeatCount="indefinite" path="M202,190 L326,190"/></circle>
+        <circle r="4" fill="#fbbf24" class="lg-pulse"><animateMotion dur="3s" begin="1.2s" repeatCount="indefinite" path="M202,202 L326,286"/></circle>
+        <circle r="4" fill="#a78bfa" class="lg-pulse"><animateMotion dur="3.4s" begin="1.8s" repeatCount="indefinite" path="M202,214 L326,365"/></circle>
+
+        <!-- port strip -->
+        <text x="875" y="150" text-anchor="middle" font-size="11" font-weight="800" fill="#cbd5e1">all bound to 127.0.0.1</text>
+        <g><rect x="700" y="160" rx="9" width="340" height="132" fill="rgba(255,255,255,.02)" stroke="rgba(148,163,184,.22)"/>
+          <text x="716" y="184" font-size="10" fill="#7dd3fc" class="mono">:8000  platform (fastapi)</text>
+          <text x="716" y="204" font-size="10" fill="#a7f3d0" class="mono">:3001  grafana admin/admin</text>
+          <text x="716" y="224" font-size="10" fill="#fde68a" class="mono">:9090  prometheus</text>
+          <text x="716" y="244" font-size="10" fill="#fdba74" class="mono">:9200  opensearch</text>
+          <text x="716" y="264" font-size="10" fill="#ddd6fe" class="mono">:5434  pgvector · :3000 langfuse</text></g>
+      </svg>
+    </div>
+  </section>
+
+<!-- ============ 2 · LANGGRAPH MAP ============ -->
+  <section class="map" id="langmap">
+    <div class="sec-head"><span class="idx">MAP 02</span><h3>LangGraph pipeline — investigation graph · as a real graph</h3></div>
+    <p class="sec-sub">Every LLM step is a LangGraph node in a single <code>StateGraph</code> with a shared <code>GraphState</code>,
+    compiled to <code>backend/graph.py:app</code> (<code>compiled = graph.compile()</code>). First node decides the route: <b>detect</b> sends a
+    report to <b>investigate</b>, which either <b>no-ops</b> (benign/known) or triggers <b>rag_retrieve</b>. Diagnostics pull
+    live evidence — the tags told you what each scene was; here we run the probe itself. <b>swarm_r</b> routes to dispatch
+    when the swarm runs; <b>swarm_r2</b> goes to self-heal; on <code>diagnosed</code> the graph computes <code>risk_score</code>,
+    formats evidence, and exits through the human-approval <b>gate</b> → <b>finalize</b> — the rail stages DETECT · INVESTIGATE
+    · RAG · DIAGNOSE · RISK · ACTION · SEAL are these exact nodes.</p>
+    <div class="glass">
+      <svg viewBox="0 0 1060 430" style="width:100%;height:auto;display:block">
+        <defs>
+          <marker id="l-sky" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0L10,5L0,10z" fill="#38bdf8"/></marker>
+          <marker id="l-emr" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0L10,5L0,10z" fill="#34d399"/></marker>
+          <marker id="l-pnk" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0L10,5L0,10z" fill="#e879f9"/></marker>
+          <marker id="l-vio" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0L10,5L0,10z" fill="#a78bfa"/></marker>
+          <marker id="l-amb" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0L10,5L0,10z" fill="#fbbf24"/></marker>
+        </defs>
+        <text x="530" y="24" text-anchor="middle" font-size="12.5" font-weight="800" fill="#cbd5e1">🧭 like case-aiops: one compiled StateGraph — detect → investigate → rag_retrieve → diagnose/risk → gate → finalize</text>
+
+        <!-- detect -->
+        <g class="node-g"><rect x="40" y="170" rx="10" width="200" height="86" class="lg-node" stroke="#38bdf8"/>
+          <text x="140" y="198" text-anchor="middle" font-size="13" font-weight="800" fill="#7dd3fc">detect</text>
+          <text x="140" y="217" text-anchor="middle" font-size="9.5" fill="#94a3b8" class="mono">decides the route</text>
+          <text x="140" y="233" text-anchor="middle" font-size="9.5" fill="#94a3b8" class="mono">report → investigate</text></g>
+
+        <!-- investigate -->
+        <g class="node-g"><rect x="340" y="38" rx="10" width="200" height="86" class="lg-node" stroke="#e879f9"/>
+          <text x="440" y="66" text-anchor="middle" font-size="13" font-weight="800" fill="#f5d0fe">investigate</text>
+          <text x="440" y="85" text-anchor="middle" font-size="9.5" fill="#94a3b8" class="mono">no-op | rag_retrieve</text>
+          <text x="440" y="101" text-anchor="middle" font-size="9.5" fill="#94a3b8" class="mono">summarizes incident</text></g>
+
+        <!-- rag_retrieve -->
+        <g class="node-g"><rect x="340" y="176" rx="10" width="200" height="86" class="lg-node" stroke="#a78bfa"/>
+          <text x="440" y="204" text-anchor="middle" font-size="13" font-weight="800" fill="#c4b5fd">rag_retrieve</text>
+          <text x="440" y="223" text-anchor="middle" font-size="9.5" fill="#94a3b8" class="mono">pgvector+opensearch</text>
+          <text x="440" y="239" text-anchor="middle" font-size="9.5" fill="#94a3b8" class="mono">+tfidf hybrid</text></g>
+
+        <!-- diagnose/risk -->
+        <g class="node-g"><rect x="640" y="38" rx="10" width="200" height="86" class="lg-node" stroke="#fbbf24"/>
+          <text x="740" y="66" text-anchor="middle" font-size="13" font-weight="800" fill="#fde68a">diagnose / risk</text>
+          <text x="740" y="85" text-anchor="middle" font-size="9.5" fill="#94a3b8" class="mono">risk_score</text>
+          <text x="740" y="101" text-anchor="middle" font-size="9.5" fill="#94a3b8" class="mono">probe live evidence</text></g>
+
+        <!-- gate -->
+        <g class="node-g"><rect x="640" y="176" rx="10" width="200" height="86" class="lg-node" stroke="#fbbf24"/>
+          <text x="740" y="204" text-anchor="middle" font-size="13" font-weight="800" fill="#fde68a">gate</text>
+          <text x="740" y="223" text-anchor="middle" font-size="9.5" fill="#94a3b8" class="mono">human approve | reject</text>
+          <text x="740" y="239" text-anchor="middle" font-size="9.5" fill="#94a3b8" class="mono">authoritative policy</text></g>
+
+        <!-- finalize -->
+        <g class="node-g"><rect x="900" y="170" rx="10" width="140" height="86" class="lg-node" stroke="#34d399"/>
+          <text x="970" y="198" text-anchor="middle" font-size="13" font-weight="800" fill="#6ee7b7">finalize</text>
+          <text x="970" y="217" text-anchor="middle" font-size="9.5" fill="#94a3b8" class="mono">format evidence</text>
+          <text x="970" y="233" text-anchor="middle" font-size="9.5" fill="#94a3b8" class="mono">seal + trace</text></g>
+
+        <!-- edges -->
+        <line x1="240" y1="205" x2="336" y2="81" stroke="#e879f9" stroke-width="1.6" marker-end="url(#l-pnk)" opacity=".8"/>
+        <line x1="240" y1="220" x2="336" y2="219" stroke="#a78bfa" stroke-width="1.6" marker-end="url(#l-vio)" opacity=".8"/>
+        <line x1="540" y1="81"  x2="636" y2="81"  stroke="#fbbf24" stroke-width="1.6" marker-end="url(#l-amb)" opacity=".8"/>
+        <line x1="540" y1="219" x2="636" y2="219" stroke="#fbbf24" stroke-width="1.6" marker-end="url(#l-amb)" opacity=".8"/>
+        <line x1="740" y1="124" x2="740" y2="172" stroke="#34d399" stroke-width="1.6" marker-end="url(#l-emr)" opacity=".8"/>
+        <line x1="840" y1="219" x2="896" y2="219" stroke="#34d399" stroke-width="1.6" marker-end="url(#l-emr)" opacity=".8"/>
+
+        <!-- pulses -->
+        <circle r="4" fill="#e879f9" class="lg-pulse"><animateMotion dur="2.2s" repeatCount="indefinite" path="M240,205 L336,81"/></circle>
+        <circle r="4" fill="#a78bfa" class="lg-pulse"><animateMotion dur="2.6s" begin="0.6s" repeatCount="indefinite" path="M240,220 L336,219"/></circle>
+        <circle r="4" fill="#fbbf24" class="lg-pulse"><animateMotion dur="2.9s" begin="1.1s" repeatCount="indefinite" path="M540,81 L636,81"/></circle>
+        <circle r="4" fill="#fbbf24" class="lg-pulse"><animateMotion dur="3.1s" begin="1.6s" repeatCount="indefinite" path="M540,219 L636,219"/></circle>
+        <circle r="4" fill="#34d399" class="lg-pulse"><animateMotion dur="2.4s" begin="0.3s" repeatCount="indefinite" path="M740,124 L740,172"/></circle>
+        <circle r="4" fill="#34d399" class="lg-pulse"><animateMotion dur="1.8s" begin="0.8s" repeatCount="indefinite" path="M840,219 L896,219"/></circle>
+      </svg>
+    </div>
+  </section>
+
+  <!-- ============ 3 · RAG ANATOMY ============ -->
+  <section class="map" id="rag">
+    <div class="sec-head"><span class="idx">MAP 03</span><h3>Fused RAG — three retrieval engines over the same knowledge</h3></div>
+    <p class="sec-sub">The knowledge base is <code>backend/knowledge/**/*.md</code> — seeded once by <code>backend/seed_rag.py</code> into
+    <b>pgvector</b> (1528-demo embeddings) and <b>opensearch</b> (Lexical), with the vector–lexical mix kept as a fused score.
+    <code>KnowledgeBase</code> combines all three engines — <code>vector()</code> + <code>lexical()</code> + <code>tfidf()</code> — each with an
+    <code>entrypoint</code> tag, and re-ranks. K8s radar graphs, falco/audit texts, runbooks and MITRE mappings all live here.</p>
+    <div class="glass">
+      <svg viewBox="0 0 1060 430" style="width:100%;height:auto;display:block">
+        <defs>
+          <marker id="r-emr" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0L10,5L0,10z" fill="#34d399"/></marker>
+          <marker id="r-vio" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0L10,5L0,10z" fill="#a78bfa"/></marker>
+          <marker id="r-sky" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0L10,5L0,10z" fill="#38bdf8"/></marker>
+          <marker id="r-pnk" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0L10,5L0,10z" fill="#e879f9"/></marker>
+        </defs>
+        <text x="530" y="24" text-anchor="middle" font-size="12.5" font-weight="800" fill="#cbd5e1">🔎 knowledge/**.md → pgvector + opensearch + tfidf, fused &amp; re-ranked</text>
+
+        <!-- knowledge base -->
+        <g class="node-g"><rect x="30" y="150" rx="10" width="230" height="96" class="lg-node" stroke="#e879f9"/>
+          <text x="145" y="180" text-anchor="middle" font-size="12.5" font-weight="800" fill="#f5d0fe">backend/knowledge/**/*.md</text>
+          <text x="145" y="200" text-anchor="middle" font-size="9.5" fill="#94a3b8" class="mono">seed_rag.py · seed_opensearch.py</text>
+          <text x="145" y="216" text-anchor="middle" font-size="9.5" fill="#94a3b8" class="mono">runbooks · k8s radar · falco/audit</text>
+          <text x="145" y="232" text-anchor="middle" font-size="9.5" fill="#94a3b8" class="mono">MITRE · demo scenarios</text></g>
+
+        <!-- three engines -->
+        <g class="node-g"><rect x="360" y="40" rx="10" width="190" height="74" class="lg-node" stroke="#a78bfa"/>
+          <text x="455" y="66" text-anchor="middle" font-size="12" font-weight="800" fill="#c4b5fd">pgvector</text>
+          <text x="455" y="84" text-anchor="middle" font-size="9" fill="#94a3b8" class="mono">vector() · euclid</text>
+          <text x="455" y="98" text-anchor="middle" font-size="9" fill="#94a3b8" class="mono">sentence-transformers</text></g>
+        <g class="node-g"><rect x="360" y="176" rx="10" width="190" height="74" class="lg-node" stroke="#38bdf8"/>
+          <text x="455" y="202" text-anchor="middle" font-size="12" font-weight="800" fill="#7dd3fc">opensearch</text>
+          <text x="455" y="220" text-anchor="middle" font-size="9" fill="#94a3b8" class="mono">lexical() · match</text>
+          <text x="455" y="234" text-anchor="middle" font-size="9" fill="#94a3b8" class="mono">kubernetes-fluent</text></g>
+        <g class="node-g"><rect x="360" y="300" rx="10" width="190" height="74" class="lg-node" stroke="#34d399"/>
+          <text x="455" y="326" text-anchor="middle" font-size="12" font-weight="800" fill="#6ee7b7">tfidf</text>
+          <text x="455" y="344" text-anchor="middle" font-size="9" fill="#94a3b8" class="mono">pure-python fallback</text>
+          <text x="455" y="358" text-anchor="middle" font-size="9" fill="#94a3b8" class="mono">no deps</text></g>
+
+        <!-- KnowledgeBase -->
+        <g class="node-g"><rect x="660" y="150" rx="10" width="230" height="96" class="lg-node" stroke="#e879f9"/>
+          <text x="775" y="180" text-anchor="middle" font-size="12.5" font-weight="800" fill="#f5d0fe">KnowledgeBase.search()</text>
+          <text x="775" y="200" text-anchor="middle" font-size="9.5" fill="#94a3b8" class="mono">vector() + lexical() + tfidf()</text>
+          <text x="775" y="216" text-anchor="middle" font-size="9.5" fill="#94a3b8" class="mono">fused score · re-rank</text>
+          <text x="775" y="232" text-anchor="middle" font-size="9.5" fill="#94a3b8" class="mono">entrypoint tag</text></g>
+
+        <!-- edges -->
+        <line x1="260" y1="178" x2="356" y2="77" stroke="#a78bfa" stroke-width="1.6" marker-end="url(#r-vio)" opacity=".8"/>
+        <line x1="260" y1="198" x2="356" y2="213" stroke="#38bdf8" stroke-width="1.6" marker-end="url(#r-sky)" opacity=".8"/>
+        <line x1="260" y1="218" x2="356" y2="337" stroke="#34d399" stroke-width="1.6" marker-end="url(#r-emr)" opacity=".8"/>
+
+        <line x1="550" y1="77"  x2="656" y2="198" stroke="#a78bfa" stroke-width="1.6" marker-end="url(#r-vio)" opacity=".8"/>
+        <line x1="550" y1="213" x2="656" y2="198" stroke="#38bdf8" stroke-width="1.6" marker-end="url(#r-sky)" opacity=".8"/>
+        <line x1="550" y1="337" x2="656" y2="198" stroke="#34d399" stroke-width="1.6" marker-end="url(#r-emr)" opacity=".8"/>
+
+        <!-- pulses -->
+        <circle r="4" fill="#a78bfa" class="lg-pulse"><animateMotion dur="2.2s" repeatCount="indefinite" path="M260,178 L356,77"/></circle>
+        <circle r="4" fill="#38bdf8" class="lg-pulse"><animateMotion dur="2.6s" begin="0.5s" repeatCount="indefinite" path="M260,198 L356,213"/></circle>
+        <circle r="4" fill="#34d399" class="lg-pulse"><animateMotion dur="3s" begin="1s" repeatCount="indefinite" path="M260,218 L356,337"/></circle>
+        <circle r="4" fill="#a78bfa" class="lg-pulse"><animateMotion dur="2.2s" begin="1.4s" repeatCount="indefinite" path="M550,77 L656,198"/></circle>
+        <circle r="4" fill="#38bdf8" class="lg-pulse"><animateMotion dur="2.6s" begin="1.9s" repeatCount="indefinite" path="M550,213 L656,198"/></circle>
+        <circle r="4" fill="#34d399" class="lg-pulse"><animateMotion dur="3s" begin="2.4s" repeatCount="indefinite" path="M550,337 L656,198"/></circle>
+      </svg>
+    </div>
+  </section>
+
+  <!-- ============ 4 · DECISION GATES ============ -->
+  <section class="map" id="gates">
+    <div class="sec-head"><span class="idx">MAP 04</span><h3>Policy engine &amp; approval gate — fail-closed, human-in-the-loop</h3></div>
+    <p class="sec-sub">The <b>policy engine</b> (<code>backend/policy/engine.py</code>) is <em>authoritative</em>: whatever the LLM
+    proposes, the policy decides — risk is binned (light/runbook/major), then every action needs an
+    <b>approval</b> (<code>backend/controllers/approval.py</code>). Nothing executes until a human clicks <b>approve</b>;
+    an <code>AUTO</code> action is a policy misfire and is re-submitted for human decision. <b>MCP execute</b> runs
+    only through the gate — validate → allowlist → policy → authorize → run → audit → verify.</p>
+    <div class="glass">
+      <svg viewBox="0 0 1060 350" style="width:100%;height:auto;display:block">
+        <defs>
+          <marker id="g-emr" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0L10,5L0,10z" fill="#34d399"/></marker>
+          <marker id="g-amb" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0L10,5L0,10z" fill="#fbbf24"/></marker>
+          <marker id="g-red" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0L10,5L0,10z" fill="#fb7185"/></marker>
+        </defs>
+        <text x="530" y="24" text-anchor="middle" font-size="12.5" font-weight="800" fill="#cbd5e1">⚖ LLM proposes → policy decides → human approves → MCP executes (fail-closed)</text>
+
+        <!-- llm proposal -->
+        <g class="node-g"><rect x="40" y="120" rx="10" width="200" height="88" class="lg-node" stroke="#e879f9"/>
+          <text x="140" y="148" text-anchor="middle" font-size="12.5" font-weight="800" fill="#f5d0fe">LLM proposal</text>
+          <text x="140" y="168" text-anchor="middle" font-size="9.5" fill="#94a3b8" class="mono">advisory only</text>
+          <text x="140" y="184" text-anchor="middle" font-size="9.5" fill="#94a3b8" class="mono">risk · action · target</text></g>
+
+        <!-- policy -->
+        <g class="node-g"><rect x="330" y="120" rx="10" width="200" height="88" class="lg-node" stroke="#fbbf24"/>
+          <text x="430" y="148" text-anchor="middle" font-size="12.5" font-weight="800" fill="#fde68a">policy engine</text>
+          <text x="430" y="168" text-anchor="middle" font-size="9.5" fill="#94a3b8" class="mono">authoritative</text>
+          <text x="430" y="184" text-anchor="middle" font-size="9.5" fill="#94a3b8" class="mono">light · runbook · major</text></g>
+
+        <!-- approve -->
+        <g class="node-g"><rect x="620" y="120" rx="10" width="200" height="88" class="lg-node" stroke="#38bdf8"/>
+          <text x="720" y="148" text-anchor="middle" font-size="12.5" font-weight="800" fill="#7dd3fc">human approval</text>
+          <text x="720" y="168" text-anchor="middle" font-size="9.5" fill="#94a3b8" class="mono">approve | reject</text>
+          <text x="720" y="184" text-anchor="middle" font-size="9.5" fill="#94a3b8" class="mono">controllers/approval.py</text></g>
+
+        <!-- mcp -->
+        <g class="node-g"><rect x="890" y="120" rx="10" width="140" height="88" class="lg-node" stroke="#34d399"/>
+          <text x="960" y="148" text-anchor="middle" font-size="12.5" font-weight="800" fill="#6ee7b7">MCP execute</text>
+          <text x="960" y="168" text-anchor="middle" font-size="9.5" fill="#94a3b8" class="mono">verify ✓</text>
+          <text x="960" y="184" text-anchor="middle" font-size="9.5" fill="#94a3b8" class="mono">audit</text></g>
+
+        <!-- edges -->
+        <line x1="240" y1="164" x2="326" y2="164" stroke="#fbbf24" stroke-width="1.6" marker-end="url(#g-amb)" opacity=".8"/>
+        <line x1="530" y1="164" x2="616" y2="164" stroke="#38bdf8" stroke-width="1.6" marker-end="url(#g-amb)" opacity=".8"/>
+        <line x1="820" y1="164" x2="886" y2="164" stroke="#34d399" stroke-width="1.6" marker-end="url(#g-emr)" opacity=".8"/>
+
+        <!-- pulses -->
+        <circle r="4" fill="#fbbf24" class="lg-pulse"><animateMotion dur="2.2s" repeatCount="indefinite" path="M240,164 L326,164"/></circle>
+        <circle r="4" fill="#38bdf8" class="lg-pulse"><animateMotion dur="2.5s" begin="0.6s" repeatCount="indefinite" path="M530,164 L616,164"/></circle>
+        <circle r="4" fill="#34d399" class="lg-pulse"><animateMotion dur="2s" begin="1.1s" repeatCount="indefinite" path="M820,164 L886,164"/></circle>
+      </svg>
+    </div>
+  </section>
+
+  <!-- ============ 5 · MCP EXECUTION ============ -->
+  <section class="map" id="mcp">
+    <div class="sec-head"><span class="idx">MAP 05</span><h3>MCP servers &amp; tools — the only way changes run</h3></div>
+    <p class="sec-sub">Everything a change does runs through <b>MCP</b>, never ad-hoc: <code>backend/mcp/server.py</code>
+    auto-discovers <b>validated</b> tools and starts gateway/backend/self-heal servers.</p>
+    <div class="glass">
+      <svg viewBox="0 0 1060 360" style="width:100%;height:auto;display:block">
+        <defs>
+          <marker id="m-sky" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0L10,5L0,10z" fill="#38bdf8"/></marker>
+          <marker id="m-emr" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0L10,5L0,10z" fill="#34d399"/></marker>
+          <marker id="m-amb" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0L10,5L0,10z" fill="#fbbf24"/></marker>
+        </defs>
+        <text x="530" y="24" text-anchor="middle" font-size="12.5" font-weight="800" fill="#cbd5e1">🔌 auto-discovered · validated · 3 servers: gateway / backend / self-heal</text>
+
+        <!-- gateway -->
+        <g class="node-g"><rect x="70" y="60" rx="10" width="220" height="86" class="lg-node" stroke="#38bdf8"/>
+          <text x="180" y="88" text-anchor="middle" font-size="12.5" font-weight="800" fill="#7dd3fc">gateway server</text>
+          <text x="180" y="108" text-anchor="middle" font-size="9.5" fill="#94a3b8" class="mono">approval(gate.py)</text>
+          <text x="180" y="124" text-anchor="middle" font-size="9.5" fill="#94a3b8" class="mono">kubectl tools (kind)</text></g>
+
+        <!-- backend -->
+        <g class="node-g"><rect x="70" y="196" rx="10" width="220" height="86" class="lg-node" stroke="#e879f9"/>
+          <text x="180" y="224" text-anchor="middle" font-size="12.5" font-weight="800" fill="#f5d0fe">backend server</text>
+          <text x="180" y="244" text-anchor="middle" font-size="9.5" fill="#94a3b8" class="mono">openai | ollama | mock</text>
+          <text x="180" y="260" text-anchor="middle" font-size="9.5" fill="#94a3b8" class="mono">vector · opensearch tools</text></g>
+
+        <!-- selfheal -->
+        <g class="node-g"><rect x="70" y="284" rx="10" width="220" height="60" class="lg-node" stroke="#34d399"/>
+          <text x="180" y="308" text-anchor="middle" font-size="12.5" font-weight="800" fill="#6ee7b7">self-heal server</text>
+          <text x="180" y="328" text-anchor="middle" font-size="9" fill="#94a3b8" class="mono">restart pod if authorized</text></g>
+
+        <!-- validate chain -->
+        <g class="node-g"><rect x="430" y="60" rx="10" width="200" height="86" class="lg-node" stroke="#fbbf24"/>
+          <text x="530" y="88" text-anchor="middle" font-size="12.5" font-weight="800" fill="#fde68a">validate</text>
+          <text x="530" y="108" text-anchor="middle" font-size="9.5" fill="#94a3b8" class="mono">allowlist</text>
+          <text x="530" y="124" text-anchor="middle" font-size="9.5" fill="#94a3b8" class="mono">policy</text></g>
+
+        <!-- run -->
+        <g class="node-g"><rect x="720" y="60" rx="10" width="220" height="86" class="lg-node" stroke="#34d399"/>
+          <text x="830" y="88" text-anchor="middle" font-size="12.5" font-weight="800" fill="#6ee7b7">run → audit → verify</text>
+          <text x="830" y="108" text-anchor="middle" font-size="9.5" fill="#94a3b8" class="mono">every tool call logged</text>
+          <text x="830" y="124" text-anchor="middle" font-size="9.5" fill="#94a3b8" class="mono">verification step</text></g>
+
+        <!-- edges -->
+        <line x1="290" y1="103" x2="426" y2="103" stroke="#fbbf24" stroke-width="1.6" marker-end="url(#m-amb)" opacity=".8"/>
+        <line x1="630" y1="103" x2="716" y2="103" stroke="#34d399" stroke-width="1.6" marker-end="url(#m-emr)" opacity=".8"/>
+
+        <!-- pulses -->
+        <circle r="4" fill="#fbbf24" class="lg-pulse"><animateMotion dur="2.2s" repeatCount="indefinite" path="M290,103 L426,103"/></circle>
+        <circle r="4" fill="#34d399" class="lg-pulse"><animateMotion dur="2.4s" begin="0.7s" repeatCount="indefinite" path="M630,103 L716,103"/></circle>
+      </svg>
+    </div>
+  </section>
+
+  <!-- ============ 6 · SCENARIOS ============ -->
+  <section class="map" id="scenarios">
+    <div class="sec-head"><span class="idx">MAP 06</span><h3>Scenario registry — every incident the simulator can replay</h3></div>
+    <p class="sec-sub">One central table <code>SCENARIOS</code> in <code>backend/simulation.py</code> drives the whole simulation —
+    each entry records the k8s alert, the offending pod, whether the detector should fire, the runbook
+    tag (filters RAG retrieval) and the final action. The registry is the single source of truth for the
+    demo scenes (crashloop, priv-scaling, misconfig, pod-sandbox, viral pods …).</p>
+    <div class="glass">
+      <div class="scen">
+        <div class="scrow sc-h"><span class="s-sel">·</span><span class="s-tag">TAG</span><span class="s-al">ALERT</span><span class="s-po">POD</span><span class="s-de">DETECT</span><span class="s-ac">ACTION</span></div>
+        <div class="scrow"><span class="s-sel">▶</span><span class="s-tag">crashloop</span><span class="s-al">CrashLoopBackOff</span><span class="s-po">payment-api</span><span class="s-de">✔</span><span class="s-ac">restart / scale</span></div>
+        <div class="scrow"><span class="s-sel">▶</span><span class="s-tag">priv-scaling</span><span class="s-al">privileged container</span><span class="s-po">monitor</span><span class="s-de">✔</span><span class="s-ac">patch securityContext</span></div>
+        <div class="scrow"><span class="s-sel">▶</span><span class="s-tag">misconfig</span><span class="s-al">InvalidImageName</span><span class="s-po">webhook</span><span class="s-de">✔</span><span class="s-ac">fix image + resource</span></div>
+        <div class="scrow"><span class="s-sel">▶</span><span class="s-tag">pod-sandbox</span><span class="s-al">CreateContainerError</span><span class="s-po">sandbox</span><span class="s-de">✔</span><span class="s-ac">re-create / inspect</span></div>
+        <div class="scrow"><span class="s-sel">▶</span><span class="s-tag">node-failure</span><span class="s-al">NotReady</span><span class="s-po">worker</span><span class="s-de">✔</span><span class="s-ac">drain / evict</span></div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ============ 7 · DETECTION FLOW ============ -->
+  <section class="map" id="detectflow">
+    <div class="sec-head"><span class="idx">MAP 07</span><h3>Detection → investigation — from a yaml severity to a verdict</h3></div>
+    <p class="sec-sub">Rules ship as <b>yaml</b> (<code>monitoring/prometheus/rules/*.yml</code> alerts, Grafana
+    <code>alerting/</code>); the detector converts them into K8s <code>Event</code>s via <code>backend/detector.py</code>.
+    Falco triggers land through <code>backend/virtual_falco.py</code>; audit events come from the k8s audit log
+    simulation. An incident is raised once — severity from the rule, evidence enriched by the student-facing
+    event model, persistence via <code>backend/storage/</code>.</p>
+    <div class="glass">
+      <svg viewBox="0 0 1060 340" style="width:100%;height:auto;display:block">
+        <defs>
+          <marker id="f-emr" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0L10,5L0,10z" fill="#34d399"/></marker>
+          <marker id="f-sky" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0L10,5L0,10z" fill="#38bdf8"/></marker>
+          <marker id="f-vio" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0L10,5L0,10z" fill="#a78bfa"/></marker>
+        </defs>
+        <text x="530" y="24" text-anchor="middle" font-size="12.5" font-weight="800" fill="#cbd5e1">📡 prometheus rules + grafana + falco + audit → detector → incident</text>
+
+        <!-- sources -->
+        <g class="node-g"><rect x="40" y="90" rx="10" width="200" height="74" class="lg-node" stroke="#38bdf8"/>
+          <text x="140" y="116" text-anchor="middle" font-size="12" font-weight="800" fill="#7dd3fc">prometheus rules</text>
+          <text x="140" y="134" text-anchor="middle" font-size="9" fill="#94a3b8" class="mono">monitoring/prometheus</text>
+          <text x="140" y="148" text-anchor="middle" font-size="9" fill="#94a3b8" class="mono">rules/*.yml</text></g>
+        <g class="node-g"><rect x="40" y="190" rx="10" width="200" height="74" class="lg-node" stroke="#e879f9"/>
+          <text x="140" y="216" text-anchor="middle" font-size="12" font-weight="800" fill="#f5d0fe">falco + audit</text>
+          <text x="140" y="234" text-anchor="middle" font-size="9" fill="#94a3b8" class="mono">virtual_falco.py</text>
+          <text x="140" y="248" text-anchor="middle" font-size="9" fill="#94a3b8" class="mono">kube-audit</text></g>
+
+        <!-- detector -->
+        <g class="node-g"><rect x="360" y="132" rx="10" width="220" height="90" class="lg-node" stroke="#34d399"/>
+          <text x="470" y="160" text-anchor="middle" font-size="12.5" font-weight="800" fill="#6ee7b7">detector.py</text>
+          <text x="470" y="180" text-anchor="middle" font-size="9.5" fill="#94a3b8" class="mono">severity from rule</text>
+          <text x="470" y="196" text-anchor="middle" font-size="9.5" fill="#94a3b8" class="mono">→ k8s Event</text></g>
+
+        <!-- incident -->
+        <g class="node-g"><rect x="700" y="132" rx="10" width="220" height="90" class="lg-node" stroke="#fbbf24"/>
+          <text x="810" y="160" text-anchor="middle" font-size="12.5" font-weight="800" fill="#fde68a">Incident · one raise</text>
+          <text x="810" y="180" text-anchor="middle" font-size="9.5" fill="#94a3b8" class="mono">severity + evidence</text>
+          <text x="810" y="196" text-anchor="middle" font-size="9.5" fill="#94a3b8" class="mono">storage/ persistence</text></g>
+
+        <!-- edges + pulses -->
+        <line x1="240" y1="127" x2="356" y2="177" stroke="#38bdf8" stroke-width="1.6" marker-end="url(#f-sky)" opacity=".8"/>
+        <line x1="240" y1="227" x2="356" y2="177" stroke="#e879f9" stroke-width="1.6" marker-end="url(#f-vio)" opacity=".8"/>
+        <line x1="580" y1="177" x2="696" y2="177" stroke="#fbbf24" stroke-width="1.6" marker-end="url(#f-emr)" opacity=".8"/>
+        <circle r="4" fill="#38bdf8" class="lg-pulse"><animateMotion dur="2.2s" repeatCount="indefinite" path="M240,127 L356,177"/></circle>
+        <circle r="4" fill="#e879f9" class="lg-pulse"><animateMotion dur="2.5s" begin="0.6s" repeatCount="indefinite" path="M240,227 L356,177"/></circle>
+        <circle r="4" fill="#fbbf24" class="lg-pulse"><animateMotion dur="2s" begin="1.1s" repeatCount="indefinite" path="M580,177 L696,177"/></circle>
+      </svg>
+    </div>
+  </section>
+
+  <!-- ============ 8 · TECH INVENTORY ============ -->
+  <section class="map" id="tech">
+    <div class="sec-head"><span class="idx">MAP 08</span><h3>Technology inventory — everything this repo runs on</h3></div>
+    <p class="sec-sub">FastAPI + Pydantic serve the platform; LangGraph orchestrates investigation; RAG is fused
+    pgvector + opensearch + tfidf. Incident handling is traced in self-hosted Langfuse; changes only happen
+    through the MCP layer behind the policy engine; everything is a container on 127.0.0.1 — no cloud.</p>
+    <div class="glass">
+      <div style="display:grid;grid-template-columns:1fr 1fr 1fr 1fr;gap:10px;padding:18px">
+        <div class="stack"><b>AI / graph</b>
+          <span class="sitem"><i class="cd c1"></i><span class="sd">langgraph</span></span>
+          <span class="sitem"><i class="cd c2"></i><span class="sd">openai · ollama · mock</span></span>
+          <span class="sitem"><i class="cd c3"></i><span class="sd">sentence-transformers</span></span>
+          <span class="sitem"><i class="cd c4"></i><span class="sd">langfuse (self-hosted)</span></span></div>
+        <div class="stack"><b>Storage</b>
+          <span class="sitem"><i class="cd c2"></i><span class="sd">pgvector (demo)</span></span>
+          <span class="sitem"><i class="cd c4"></i><span class="sd">opensearch</span></span>
+          <span class="sitem"><i class="cd c1"></i><span class="sd">tfidf fallback</span></span>
+          <span class="sitem"><i class="cd c3"></i><span class="sd">sqlite/redis session</span></span></div>
+        <div class="stack"><b>K8s / observ</b>
+          <span class="sitem"><i class="cd c3"></i><span class="sd">kind cluster</span></span>
+          <span class="sitem"><i class="cd c1"></i><span class="sd">prometheus + grafana</span></span>
+          <span class="sitem"><i class="cd c4"></i><span class="sd">falco (privileged)</span></span>
+          <span class="sitem"><i class="cd c2"></i><span class="sd">audit log · kubectl</span></span></div>
+        <div class="stack"><b>API / control</b>
+          <span class="sitem"><i class="cd c1"></i><span class="sd">fastapi + pydantic</span></span>
+          <span class="sitem"><i class="cd c3"></i><span class="sd">mcp gateway/backend</span></span>
+          <span class="sitem"><i class="cd c2"></i><span class="sd">policy engine (fail-closed)</span></span>
+          <span class="sitem"><i class="cd c4"></i><span class="sd">human approval gate</span></span></div>
+      </div>
+    </div>
+  </section>
+
+  <div class="cheat">
+    <div>
+      <h4>⚡ cheat sheet — commands you actually use</h4>
+      <p><code>bash scripts/run_stack.sh all</code> brings the whole stack up ·
+      <code>bash scripts/seed.sh</code> seeds RAG + opensearch · <code>bash scripts/scan.sh</code> runs the CKS audit ·
+      <code>kubectl -n observability get pods</code> shows live state · <code>curl :8000/health</code> probes the platform ·
+      <code>curl :3001</code> opens Grafana · <code>curl :9200</code> talks to OpenSearch.</p>
+    </div>
+    <div>
+      <h4>🧭 how this page maps to the repo</h4>
+      <p>Maps 01-08 trace <code>scripts/</code> · <code>docker/</code> · <code>kubernetes/</code> · <code>monitoring/</code> · <code>backend/</code> exactly; the rail
+      above replays <code>backend/graph.py</code>; verdicts come from <code>backend/policy/engine.py</code>; every change runs
+      through <code>backend/mcp/</code> after human approval — fail-closed. The simulator replays the same logic the
+      tests lock in (85 passing).</p>
+    </div>
+  </div>
+
+  <footer>
+    <span>LLM-Assisted Observability &amp; Security for Kubernetes · simulated faithful to <code>backend/</code> · <code>monitoring/</code> · <code>kubernetes/</code> · <code>docker/</code> · <code>scripts/</code></span>
+    <span>everything local on 127.0.0.1 · no cloud</span>
+  </footer>
+
+</div>
+
+<script>
+/* ================= STAGES ================= */
+const STAGES = [
+  {
+    key:'preflight', n:1, icon:'🧰', title:'Preflight & local stack — run_stack.sh stack up',
+    tag:'LOCAL STACK', color:'sky',
+    blurb:'run_stack.sh preflights .env, then brings up the whole observability stack via docker compose — all bound to 127.0.0.1. Grafana gained a provisioned "AI Observability" dashboard in this release; Langfuse is self-hosted through langfuse-compose like case-aiops.',
+    flow:[
+      {t:'preflight .env',d:'bash scripts/run_stack.sh stack up'},
+      {t:'docker-compose up',d:'docker/docker-compose.yml — healthchecks'},
+      {t:'prometheus · grafana',d:':9090 · :3001 admin/admin (provisioned)'},
+      {t:'opensearch · pgvector',d:':9200 · :5434'},
+      {t:'langfuse-compose up',d:'self-hosted :3000 project ai-observability'}
+    ],
+    logs:[
+      ['cmd','# everything runs on 127.0.0.1 — managed by run_stack.sh'],
+      ['cmd','$ bash scripts/run_stack.sh stack up'],
+      ['ok','prometheus healthy :9090 · grafana healthy :3001 (admin/admin)'],
+      ['ok','grafana provisioning — datasources + ai-observability-dashboard.json'],
+      ['ok','opensearch healthy :9200 (yellow single-node) · pgvector :5434'],
+      ['ok','langfuse self-hosted :3000 — project "ai-observability" · every port local']
+    ],
+    cards:[
+      {k:'script',v:'scripts/run_stack.sh',c:'sky'},
+      {k:'compose',v:'docker/docker-compose.yml',c:'emr'},
+      {k:'dashboard',v:'monitoring/grafana/provisioning/dashboards/dashboard.json',c:'vio'},
+      {k:'langfuse',v:'docker/langfuse-compose.yml · :3000',c:'fuc'}
+    ]
+  },
+  {
+    key:'kube', n:2, icon:'🧊', title:'Local Kubernetes cluster — kind + tools/bin',
+    tag:'KIND CLUSTER', color:'vio',
+    blurb:'run_stack.sh kube up creates a single-node kind cluster (ai-observability-local) and applies every manifest: namespace (PodSecurity enforce=privileged so Falco can run), RBAC, demo workloads, threat detector, in-cluster monitoring and the observability aggregator. kind + kubectl live in tools/bin.',
+    flow:[
+      {t:'kind create',d:'tools/bin/kind create cluster'},
+      {t:'namespace + rbac',d:'kubernetes/namespace · kubernetes/rbac'},
+      {t:'demo workloads',d:'cpu/memory/crash/cert demos + ci-bot'},
+      {t:'aggregator',d:'observability-aggregator — falco (privileged)'},
+      {t:'in-cluster monitoring',d:'prometheus + grafana deployments'}
+    ],
+    logs:[
+      ['cmd','$ bash scripts/run_stack.sh kube up'],
+      ['ok','kind cluster "ai-observability-local" ready (single node)'],
+      ['ok','namespace ai-observability-demo · pod-security enforce=privileged (falco container needs it)'],
+      ['ok','demo workloads: cpu-demo · memory-demo · crash-demo · cert-demo · ci-bot + test-pod'],
+      ['ok','observability-aggregator running 2/2 — falco + event stream'],
+      ['info','kubectl + kind from tools/bin (project-local, git-ignored) — nothing global']
+    ],
+    cards:[
+      {k:'cluster',v:'kubernetes/kind/kind-cluster.yaml',c:'vio'},
+      {k:'status',v:'bash run_stack.sh kube status',c:'cyan'},
+      {k:'aggregator',v:'kubernetes/aggregation-layer/aggregator.yaml',c:'vio'},
+      {k:'falco',v:'monitoring/falco/falco_rules.yaml',c:'amber'}
+    ]
+  },
+  {
+    key:'seed', n:3, icon:'🌱', title:'RAG knowledge seed — database info everywhere',
+    tag:'RAG SEED', color:'emr',
+    blurb:'seed_rag.py re-ingests knowledge/**/*.md into every reachable backend: pgvector (vector384 + tsvector hybrid), OpenSearch (BM25 index knowledge-chunks) and the in-process TF-IDF index. seed_opensearch.py loads the demo logs/audit/falco events. run_stack.sh rag prints the RAG database info.',
+    flow:[
+      {t:'knowledge/**/*.md',d:'docs → chunk → embed'},
+      {t:'pgvector',d:'hybrid vector384 + tsvector · :5434'},
+      {t:'opensearch',d:'index knowledge-chunks · BM25 · :9200'},
+      {t:'tfidf in-process',d:'rebuild symmetric index'},
+      {t:'RAG info',d:'run_stack.sh rag → /api/knowledge/db/info'}
+    ],
+    logs:[
+      ['cmd','$ PYTHONPATH=. .venv/bin/python scripts/seed_rag.py'],
+      ['db','pgvector reindexed 34 chunks · dim=384 · model=local:hashbow384'],
+      ['db','opensearch reindexed 34 chunks · index knowledge-chunks · BM25'],
+      ['ok','tfidf in-process index reloaded (34 chunks / 9 docs)'],
+      ['cmd','$ python scripts/seed_opensearch.py --reset'],
+      ['db','kubernetes-logs 7 · kubernetes-audit 5 · falco-events 8'],
+      ['ok','RAG database info — bash scripts/run_stack.sh rag → /api/knowledge/db/info'],
+      ['info','categories: audit-logs · certificates · falco · kubernetes-troubleshooting · runbooks · security']
+    ],
+    cards:[
+      {k:'seeder',v:'scripts/seed_rag.py',c:'emr'},
+      {k:'pgvector',v:'backend/services/rag.py :: PgvectorBackend',c:'sky'},
+      {k:'opensearch',v:'backend/services/rag.py :: OpensearchBackend',c:'cyan'},
+      {k:'tfidf',v:'backend/services/rag.py :: TfidfIndex',c:'lim'}
+    ]
+  },
+  {
+    key:'detect', n:4, icon:'📡', title:'Detection & incident ingest — from signals to incident',
+    tag:'DETECT', color:'amb',
+    blurb:'Alerts arrive from Grafana/Prometheus rules, Kubernetes pod status or OpenSearch falco/audit events. detector.py normalises them into an incident via POST /api/incidents/detect, persisted to data/incidents.json — then the LangGraph pipeline starts.',
+    flow:[
+      {t:'Grafana rules',d:'monitoring/prometheus/rules.yml'},
+      {t:'k8s status · cert',d:'kube.py · certmon demo workloads'},
+      {t:'falco + audit events',d:'OpenSearch falco-events · kubernetes-audit'},
+      {t:'detector.py',d:'POST /api/incidents/detect'},
+      {t:'incident',d:'stored → data/incidents.json → graph'}
+    ],
+    logs:[
+      ['cmd','$ curl -X POST http://127.0.0.1:8000/api/incidents/detect ...'],
+      ['net','alert high_cpu sustained 5m on cpu-demo (Grafana rule)'],
+      ['info','incident INC-… type=high_cpu severity=high namespace=ai-observability-demo'],
+      ['ok','incident persisted → data/incidents.json'],
+      ['io','pipeline triggered — backend/workflows/graph.py']
+    ],
+    cards:[
+      {k:'rules',v:'monitoring/prometheus/rules.yml',c:'emr'},
+      {k:'detector',v:'backend/services/detector.py',c:'amber'},
+      {k:'endpoint',v:'POST /api/incidents/detect',c:'sky'},
+      {k:'store',v:'data/incidents.json',c:'vio'}
+    ]
+  },
+  {
+    key:'investigate', n:5, icon:'🕵️', title:'LangGraph investigation — classify · collect · correlate',
+    tag:'INVESTIGATE', color:'ros',
+    blurb:'The investigation graph runs three deterministic nodes: classify (incident type + severity), collect_evidence (prometheus/kube/opensearch/cert adapters, simulated where needed) and correlate (cross-source timeline). Evidence is shown raw — the LLM has not decided anything yet.',
+    flow:[
+      {t:'classify',d:'type + severity'},
+      {t:'collect_evidence',d:'adapters → raw evidence'},
+      {t:'correlate',d:'cross-source timeline'},
+      {t:'evidence envelope',d:'bounded history · raw first'}
+    ],
+    logs:[
+      ['llm','invoke backend/workflows/graph.py (8 investigation nodes)'],
+      ['info','classify → type=high_cpu severity=high'],
+      ['net','collect_evidence: prometheus CPU 88-96% · pod cpu-demo (8 items)'],
+      ['ok','correlate: spike began 3m before rollout events'],
+      ['ok','evidence envelope built — no LLM touched it yet (traced to Langfuse)']
+    ],
+    cards:[
+      {k:'graph',v:'backend/workflows/graph.py',c:'sky'},
+      {k:'nodes',v:'backend/workflows/nodes.py',c:'ros'},
+      {k:'adapters',v:'backend/services/prometheus.py · kube.py · opensearch.py',c:'cyan'},
+      {k:'fallback',v:'backend/services/simulation.py (stress-free runs)',c:'emr'}
+    ]
+  },
+  {
+    key:'rag', n:6, icon:'🔎', title:'RAG retrieve + diagnose + risk — the LLM proposes',
+    tag:'RAG + LLM', color:'cyan',
+    blurb:'rag_retrieve fuses TF-IDF, pgvector (vector + tsvector) and OpenSearch (BM25) into top-k RagSources shown to the LLM. diagnose and assess_risk are LLM proposals (mock | openai | ollama), advisory only — the policy engine decides later.',
+    flow:[
+      {t:'rag_retrieve',d:'tfidf 1.0 · pgv 1.2 · os 1.1'},
+      {t:'top-k sources',d:'knowledge/**/*.md chunks'},
+      {t:'diagnose',d:'LLM proposal → premise + action'},
+      {t:'assess_risk',d:'risk + confidence'}
+    ],
+    logs:[
+      ['db','RAG fused results — tfidf + pgvector + opensearch weights applied'],
+      ['db','retrieved 3 chunks (sustained-high-cpu.md, runbooks) via /api/knowledge/search'],
+      ['llm','diagnose (mock): load exceeds capacity → scale out 2 → 3'],
+      ['llm','assess_risk: risk=low · confidence=0.87'],
+      ['info','langfuse trace: workflow:… nodes rag_retrieve · diagnose · assess_risk nested']
+    ],
+    cards:[
+      {k:'backend',v:'backend/services/rag.py :: KnowledgeIndex (fused)',c:'cyan'},
+      {k:'search',v:'POST /api/knowledge/search',c:'sky'},
+      {k:'llm',v:'mock | openai | ollama · backend/services/llm.py',c:'fuc'},
+      {k:'tracing',v:'backend/services/tracer.py',c:'vio'}
+    ]
+  },
+  {
+    key:'policy', n:7, icon:'🛡', title:'Plan + policy check — the authoritative gate',
+    tag:'POLICY', color:'fuc',
+    blurb:'plan_remediation proposes scale_deployment; policy_check decides. Only sustained high CPU is AUTO (P-01, bounded by MAX_AUTOSCALE_DELTA=2); everything else is APPROVAL_REQUIRED; unknown policies hit P-99 → NO_ACTION, fail-closed. Allowlists guard deployments and namespaces.',
+    flow:[
+      {t:'plan_remediation',d:'action + params (LLM proposal)'},
+      {t:'policy_check',d:'backend/policy/engine.py'},
+      {t:'P-01..P-08 · P-99',d:'AUTO | APPROVAL | NO_ACTION'}
+    ],
+    logs:[
+      ['info','plan: scale_deployment cpu-demo 2 → 3 (delta 1 ≤ MAX_AUTOSCALE_DELTA=2)'],
+      ['ok','policy P-01 sustained_high_cpu → AUTO — the only auto action in the system'],
+      ['sec','allowlist check: ALLOWED_DEPLOYMENTS ✓ · ALLOWED_NAMESPACES ✓'],
+      ['info','anything unrecognised → P-99 fail-closed NO_ACTION (never trust an unvetted helper)']
+    ],
+    cards:[
+      {k:'engine',v:'backend/policy/engine.py',c:'fuc'},
+      {k:'rules',v:'P-01..P-08 · P-99',c:'vio'},
+      {k:'guardrails',v:'ALLOWED_DEPLOYMENTS · ALLOWED_NAMESPACES · MAX_AUTOSCALE_*',c:'emr'}
+    ]
+  },
+  {
+    key:'approval', n:8, icon:'⚖', title:'Human approval gate — /api/approvals',
+    tag:'APPROVAL', color:'org',
+    blurb:'APPROVAL_REQUIRED incidents surface in the web UI and /api/approvals: memory scale, OOM, CrashLoopBackOff restart, cert renew, falco investigation, RBAC rollback. Approvals are audited with approved_by + reason. AUTO incidents (high CPU) skip this stage.',
+    flow:[
+      {t:'decision=APPROVAL',d:'from policy_check'},
+      {t:'/api/approvals',d:'pending list'},
+      {t:'web UI approve/reject',d:'frontend views'},
+      {t:'audit record',d:'approved_by + reason'}
+    ],
+    logs:[
+      ['net','GET /api/approvals/pending'],
+      ['ok','approver action → approve · approved_by=… · reason=… (audited)'],
+      ['sec','every execution records policy decision + executor + verification'],
+      ['cmd','optional automated driver: python scripts/demo_driver.py --approve-all']
+    ],
+    cards:[
+      {k:'api',v:'backend/api/approvals.py',c:'org'},
+      {k:'ui',v:'frontend — approval panels',c:'sky'},
+      {k:'audit',v:'backend/services/store.py',c:'rose'},
+      {k:'driver',v:'scripts/demo_driver.py',c:'emr'}
+    ]
+  },
+  {
+    key:'execute', n:9, icon:'🛠', title:'MCP execution + verify — tools that check themselves',
+    tag:'MCP EXECUTE', color:'tea',
+    blurb:'The execution graph runs through the MCP controlled layer: validate → allowlist → policy → authorize → run → audit → verify. No shell or kubectl tools exist — /api/mcp/no-unsafe-tools = true. The tool audits its own result and only completes when post-conditions pass.',
+    flow:[
+      {t:'MCP action',d:'execute node → registry'},
+      {t:'validate → allowlist',d:'backend/mcp/validator.py · registry.py'},
+      {t:'policy re-check',d:'authorize + run'},
+      {t:'verify post-conditions',d:'replicas Ready · cert renewed · role reverted'},
+      {t:'audit',d:'result + output saved'}
+    ],
+    logs:[
+      ['ok','validation ✓ action allowlisted (scale_deployment)'],
+      ['exec','mcp.scale_deployment cpu-demo 2 → 3 (params validated)'],
+      ['net','kubectl patch deployment cpu-demo --replicas=3'],
+      ['ok','verify: availableReplicas=3 · all Ready · PASSED'],
+      ['sec','audit entry appended — behavior + output + verification']
+    ],
+    cards:[
+      {k:'registry',v:'backend/mcp/registry.py',c:'tea'},
+      {k:'validator',v:'backend/mcp/validator.py',c:'vio'},
+      {k:'actions',v:'scale · restart · renew · rollback',c:'emr'},
+      {k:'mcp api',v:'backend/api/mcp.py',c:'sky'}
+    ]
+  },
+  {
+    key:'finalize', n:10, icon:'🏁', title:'Finalize & trace — sealed incident in Langfuse',
+    tag:'FINALIZE', color:'lim',
+    blurb:'finalize stores the resolved incident, updates metrics, notifies Slack, and every LLM/graph/MCP call is traced in self-hosted Langfuse (localhost:3000) via backend/services/tracer.py (LANGFUSE_ENABLED=true). The incident is sealed as REMEDIATED.',
+    flow:[
+      {t:'finalize',d:'seal incident REMEDIATED'},
+      {t:'incident store',d:'data/incidents.json'},
+      {t:'metrics',d:'/api/metrics updated'},
+      {t:'slack notify',d:'backend/services/slack.py'},
+      {t:'langfuse trace',d:'localhost:3000 · every observation'}
+    ],
+    logs:[
+      ['ok','incident INC-… sealed REMEDIATED → data/incidents.json'],
+      ['info','metrics updated via /api/metrics · /api/status'],
+      ['net','slack webhook → notified channel #o11y-alerts'],
+      ['info','langfuse: trace workflow:… observations diagnose · risk · execute · verify'],
+      ['ok','pipeline complete — 10/10 · bash run_stack.sh status all healthy']
+    ],
+    cards:[
+      {k:'store',v:'backend/services/store.py',c:'emr'},
+      {k:'metrics',v:'backend/api/metrics.py',c:'sky'},
+      {k:'notify',v:'backend/services/slack.py',c:'ros'},
+      {k:'trace',v:'backend/services/tracer.py · langfuse :3000',c:'fuc'}
+    ]
+  }
+];
+
+/* ================= SIM ENGINE ================= */
+const $=id=>document.getElementById(id);
+const rail=$('rail'), svBadge=$('svBadge'), svTitle=$('svTitle'), svBlurb=$('svBlurb'),
+      svFlow=$('svFlow'), svCards=$('svCards'), conlog=$('conlog'),
+      btnPlay=$('btnPlay'), btnReset=$('btnReset'), stagePill=$('stagePill'), liveDot=$('liveDot'),
+      stageView=$('stageView'), doneBanner=$('doneBanner'), progress=document.querySelector('.progress');
+
+let speed=1, gen=0, idx=0, playing=false;
+const sleep=ms=>new Promise(r=>setTimeout(r,ms/speed));
+
+function ts(){const d=new Date();return d.toTimeString().slice(0,8);}
+function log(tag,msg){
+  const ln=document.createElement('div');ln.className='ln '+tag;
+  ln.innerHTML='<span class="ts">'+ts()+'</span><span class="tag">['+tag+']</span><span class="m"></span>';
+  ln.querySelector('.m').textContent=msg;
+  conlog.appendChild(ln);
+  while(conlog.children.length>240)conlog.removeChild(conlog.firstChild);
+  conlog.scrollTop=conlog.scrollHeight;
+}
+
+function buildRail(){
+  STAGES.forEach((s,i)=>{
+    const el=document.createElement('div');el.className='rail-item';el.id='rail-'+i;
+    el.innerHTML='<div class="num">'+String(s.n).padStart(2,'0')+'</div><div><div class="lbl">'+s.icon+' '+s.title.split('—')[0].trim()+'</div><div class="sub"></div></div>';
+    el.onclick=()=>{if(playing)pause();gen++;showStage(i);markRail(i,'active');};
+    rail.appendChild(el);
+  });
+  const p=document.createElement('div');p.className='progress';p.innerHTML='<i></i>';rail.appendChild(p);
+}
+
+function markRail(i,state){
+  STAGES.forEach((_,j)=>{
+    const el=$('rail-'+j);if(!el)return;
+    el.classList.remove('active','done');
+    if(j<i)el.classList.add('done');
+  });
+  if(state==='active')$('rail-'+i)?.classList.add('active');
+  if(state==='done')$('rail-'+i)?.classList.add('done');
+  const bar=rail.querySelector('.progress i');
+  if(bar)bar.style.width=(state==='done'?100:(i/STAGES.length)*100)+'%';
+}
+
+function shortTitle(s){return s.title.split('—')[0].trim();}
+
+function showStage(i){
+  idx=i;const s=STAGES[i],c=COLOR[s.color];
+  svBadge.textContent=s.tag;svBadge.style.color=c[0];svBadge.style.borderColor=c[1];svBadge.style.background=c[2];
+  svTitle.innerHTML=s.icon+' '+s.title;
+  svBlurb.textContent=s.blurb;
+  stageView.style.setProperty('--gc',c[1]);stageView.style.setProperty('--gx','30%');
+  stagePill.innerHTML=(playing?'<span class="live-dot"></span>':'<span class="live-dot off"></span>')+'&nbsp;'+(playing?'running':'idle')+' · stage '+s.n+'/'+STAGES.length;
+  svFlow.innerHTML='';
+  s.flow.forEach((f,j)=>{
+    if(j>0){const a=document.createElement('div');a.className='farrow';a.style.setProperty('--ft',c[0]);a.id='fa-'+j;svFlow.appendChild(a);}
+    const n=document.createElement('div');n.className='fnode';n.id='fn-'+j;
+    n.style.setProperty('--fc',c[1]);n.style.setProperty('--fg',c[2]);n.style.setProperty('--ft',c[0]);
+    n.innerHTML='<div class="t">'+f.t+'</div><div class="d">'+f.d+'</div>';
+    svFlow.appendChild(n);
+  });
+  svCards.innerHTML='';
+  s.cards.forEach(cd=>{
+    const el=document.createElement('div');el.className='card';
+    const vc=cd.c&&COLOR[cd.c]?COLOR[cd.c][0]:'#bae6fd';
+    el.innerHTML='<div class="k">'+cd.k+'</div><div class="v" style="color:'+vc+'">'+cd.v+'</div>';
+    svCards.appendChild(el);
+  });
+  doneBanner.classList.remove('show');
+}
+
+async function runStage(i){
+  const s=STAGES[i],c=COLOR[s.color],myGen=gen;
+  showStage(i);markRail(i,'active');
+  log('info','──────── '+s.tag+' · '+shortTitle(s)+' ────────');
+  await sleep(320);if(myGen!==gen)return;
+  for(let j=0;j<s.flow.length;j++){
+    if(myGen!==gen)return;
+    $('fn-'+j)?.classList.add('lit');
+    if(j>0)$('fa-'+j)?.classList.add('lit');
+    await sleep(430);if(myGen!==gen)return;
+  }
+  for(const l of s.logs){
+    if(myGen!==gen)return;
+    log(l[0],l[1]);
+    await sleep(300);
+  }
+  const cards=[...svCards.children];
+  for(const cd of cards){if(myGen!==gen)return;cd.classList.add('in');await sleep(110);}
+  markRail(i+1<=STAGES.length-1?i+1:i, i===STAGES.length-1?'done':'active');
+}
+
+async function play(){
+  if(playing)return;
+  playing=true;gen++;const myGen=gen;
+  btnPlay.textContent='⏸ Pause';btnPlay.classList.add('playing');
+  for(let i=0;i<STAGES.length;i++){
+    if(myGen!==gen)break;
+    await runStage(i);
+    if(myGen!==gen)break;
+    await sleep(520);
+  }
+  if(myGen===gen){
+    playing=false;btnPlay.textContent='▶ Run pipeline';btnPlay.classList.remove('playing');
+    stagePill.innerHTML='<span class="live-dot off"></span>&nbsp;done · 10/10';
+    doneBanner.classList.add('show');
+    markRail(STAGES.length,'done');
+  }
+}
+function pause(){playing=false;gen++;btnPlay.textContent='▶ Run pipeline';btnPlay.classList.remove('playing');
+  stagePill.innerHTML='<span class="live-dot off"></span>&nbsp;paused · stage '+STAGES[idx].n+'/'+STAGES.length;}
+function reset(){
+  playing=false;gen++;idx=0;
+  btnPlay.textContent='▶ Run pipeline';btnPlay.classList.remove('playing');
+  conlog.innerHTML='';doneBanner.classList.remove('show');
+  stagePill.innerHTML='<span class="live-dot off"></span>&nbsp;idle · stage 1/'+STAGES.length;
+  markRail(0,'active');showStage(0);
+  log('info','simulator reset — press Run pipeline');
+}
+
+/* ================= COLOR ================= */
+const COLOR = {
+  sky:['#7dd3fc','rgba(56,189,248,.6)','rgba(56,189,248,.13)'],
+  vio:['#ddd6fe','rgba(167,139,250,.6)','rgba(167,139,250,.13)'],
+  emr:['#a7f3d0','rgba(52,211,153,.6)','rgba(52,211,153,.13)'],
+  amb:['#fde68a','rgba(251,191,36,.6)','rgba(251,191,36,.13)'],
+  ros:['#fda4af','rgba(251,113,133,.6)','rgba(251,113,133,.13)'],
+  cyan:['#67e8f9','rgba(34,211,238,.6)','rgba(34,211,238,.13)'],
+  fuc:['#f5d0fe','rgba(232,121,249,.6)','rgba(232,121,249,.13)'],
+  org:['#fdba74','rgba(251,146,60,.6)','rgba(251,146,60,.13)'],
+  tea:['#5eead4','rgba(45,212,191,.6)','rgba(45,212,191,.13)'],
+  lim:['#d9f99d','rgba(163,230,53,.6)','rgba(163,230,53,.13)']
+};
+
+btnPlay.onclick=()=>playing?pause():play();
+btnReset.onclick=reset;
+$('conClear').onclick=()=>conlog.innerHTML='';
+document.querySelectorAll('#speedSeg button').forEach(b=>{
+  b.onclick=()=>{document.querySelectorAll('#speedSeg button').forEach(x=>x.classList.remove('on'));b.classList.add('on');speed=+b.dataset.s;};
+});
+
+buildRail();markRail(0,'active');showStage(0);
+log('info','LLM-Assisted Observability for Kubernetes simulator ready — mirrors the repo: stack up → kind cluster → RAG seed → detect → LangGraph investigate → fused RAG → diagnose/risk → policy → approval → MCP execute + verify → finalize + trace');
+log('info','press ▶ Run pipeline, click a stage in the rail, or scroll for the local-stack / LangGraph / RAG / policy / MCP / scenario maps');
+</script>
+</body>
+</html>

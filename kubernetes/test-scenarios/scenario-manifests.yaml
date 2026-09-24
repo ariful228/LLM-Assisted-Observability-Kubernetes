@@ -1,0 +1,58 @@
+---
+# Scenario 6 seed: a CI bot was granted cluster-admin EXTERNALLY by an attacker.
+# The platform's suspicious-RBAC detection must flag this ClusterRoleBinding.
+# Keep this file apply-only-when-demoing scenario 6; never apply in production.
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRoleBinding
+metadata:
+  name: ci-bot-cluster-admin
+  labels:
+    observability.llm/scenario: suspicious-rbac
+    observability.llm/marking: "malicious"
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: ClusterRole
+  name: cluster-admin
+subjects:
+  - kind: ServiceAccount
+    name: allowlisted-service-account
+    namespace: ai-observability-demo
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: threat-certificate-config
+  namespace: ai-observability-demo
+  labels:
+    observability.llm/scenario: certificate-expiry-threat
+data:
+  threat-watching-config.yaml: |
+    # Threat-detection certificate is expiring critically soon.
+    threat_detection_days_left_to_expiry: 2
+    cert_mandatory_threshold_days: 30
+---
+# Threat-detection workload whose certificate drives the THREAT-EXPIRY branch
+# of the certificate scenario. In the simulated runtime this is surfaced by the
+# same certificate monitor used for scenario 4.
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: threat-detector
+  namespace: ai-observability-demo
+  labels:
+    app: threat-detector
+    observability.llm/scenario: certificate-expiry-threat
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: threat-detector
+  template:
+    metadata:
+      labels:
+        app: threat-detector
+    spec:
+      containers:
+        - name: threat-detector
+          image: busybox:1.36
+          command: ["/bin/sh", "-c", "while true; do sleep 5; done"]

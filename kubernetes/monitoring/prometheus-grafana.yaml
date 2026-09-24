@@ -1,0 +1,138 @@
+# In-cluster monitoring stack used by the real-pipeline integration path.
+# The platform also ships a docker-compose that runs the same stack locally
+# (see docker/docker-compose.yml).
+
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: prometheus-config
+  namespace: ai-observability-demo
+data:
+  prometheus.yml: |
+    global: { scrape_interval: 15s, evaluation_interval: 15s }
+    rule_files:
+      - /etc/prometheus/rules.yml
+    scrape_configs:
+      - job_name: kubernetes-pods
+        kubernetes_sd_configs: [ { role: pod } ]
+        relabel_configs:
+          - source_labels: [__meta_kubernetes_pod_annotation_prometheus_io_scrape]
+            action: keep
+            regex: "true"
+          - source_labels: [__meta_kubernetes_pod_annotation_prometheus_io_path]
+            action: replace
+            target_label: __metrics_path__
+            regex: (.+)
+          - source_labels: [__address__, __meta_kubernetes_pod_annotation_prometheus_io_port]
+            action: replace
+            regex: ([^:]+)(?::\d+)?;(\d+)
+            replacement: $1:$2
+            target_label: __address__
+          - action: labelmap
+            regex: __meta_kubernetes_pod_label_(.+)
+      - job_name: platform-app
+        static_configs: [ { targets: ["platform:8000"] } ]
+  rules.yml: |
+    groups:
+      - name: ai-observability.rules
+        rules:
+          - record: pod:cpu_usage_ratio
+            expr: rate(container_cpu_usage_seconds_total{container!=""}[5m]) / on(pod, namespace) group_left() sum by (pod) (container_spec_cpu_quota{container!=""})/100000
+  alerts: |
+    groups:
+      - name: platform
+        rules:
+          - alert: PlatformDown
+            expr: up{job="platform-app"} == 0
+            for: 1m
+            labels: { severity: critical }
+            annotations: { summary: "AI observability platform down" }
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: prometheus
+  namespace: ai-observability-demo
+spec:
+  replicas: 1
+  selector: { matchLabels: { app: prometheus } }
+  template:
+    metadata:
+      labels: { app: prometheus }
+    spec:
+      serviceAccountName: platform
+      containers:
+        - name: prom
+          image: prom/prometheus:v2.53.0
+          args:
+            - --config.file=/etc/prometheus/prometheus.yml
+            - --storage.tsdb.retention.time=24h
+          ports: [{ containerPort: 9090 }]
+          volumeMounts:
+            - name: config
+              mountPath: /etc/prometheus
+      volumes:
+        - name: config
+          configMap: { name: prometheus-config }
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: prometheus
+  namespace: ai-observability-demo
+spec:
+  type: ClusterIP
+  selector: { app: prometheus }
+  ports: [{ name: http, port: 9090, targetPort: 9090 }]
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: grafana
+  namespace: ai-observability-demo
+spec:
+  replicas: 1
+  selector: { matchLabels: { app: grafana } }
+  template:
+    metadata:
+      labels: { app: grafana }
+    spec:
+      containers:
+        - name: grafana
+          image: grafana/grafana:11.1.0
+          env:
+            - name: GF_SECURITY_ADMIN_USER
+              value: admin
+            - name: GF_SECURITY_ADMIN_PASSWORD
+              value: admin
+            - name: GF_AUTH_ANONYMOUS_ENABLED
+              value: "true"
+          ports: [{ containerPort: 3000 }]
+          volumeMounts:
+            - name: dashboards
+              mountPath: /etc/grafana/provisioning/dashboards/ai-observability-dashboard.yaml
+              subPath: provider.yaml
+            - name: dashboard-json
+              mountPath: /var/lib/grafana/dashboards/dashboard.json
+              subPath: dashboard.json
+            - name: datasources
+              mountPath: /etc/grafana/provisioning/datasources/prometheus.yaml
+              subPath: prometheus.yaml
+      volumes:
+        - name: dashboards
+          configMap: { name: grafana-dashboards }
+        - name: dashboard-json
+          configMap: { name: grafana-dashboards }
+        - name: datasources
+          configMap: { name: grafana-datasources }
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: grafana
+  namespace: ai-observability-demo
+spec:
+  type: ClusterIP
+  selector: { app: grafana }
+  ports: [{ name: http, port: 3000, targetPort: 3000 }]

@@ -1,0 +1,32 @@
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+.eggs/
+.venv/
+venv/
+
+# Env / secrets
+.env
+*.env.local
+
+# Runtime data
+data/incidents.json
+data/certs/
+data/*.pid
+*.log
+
+# Test / tooling caches
+.pytest_cache/
+.coverage
+htmlcov/
+.ruff_cache/
+.mypy_cache/
+
+# OS / editor
+.DS_Store
+.idea/
+.vscode/
+
+# Local tooling (kind/kubectl binaries, managed by run_stack.sh)
+tools/bin/

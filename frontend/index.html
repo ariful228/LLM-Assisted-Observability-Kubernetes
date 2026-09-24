@@ -1,0 +1,227 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>AI Kubernetes Observability &amp; Security</title>
+  <link rel="stylesheet" href="/static/style.css" />
+</head>
+<body>
+  <header class="topbar">
+    <div class="brand">🛰️ AI O11y · Kubernetes</div>
+    <nav>
+      <button data-view="dashboard" class="active">Dashboard</button>
+      <button data-view="workflow">Workflow Sim</button>
+      <button data-view="incidents">Incidents</button>
+      <button data-view="security">Security</button>
+      <button data-view="approvals">Approvals <span id="approval-badge" class="badge">0</span></button>
+      <button data-view="tools">MCP Tools</button>
+      <button data-view="knowledge">Knowledge/RAG</button>
+      <button data-view="logs">Application Logs</button>
+      <button data-view="status">System</button>
+      <a class="nav-sim" href="/static/simulator.html" target="_blank">Pipeline Simulator ↗</a>
+    </nav>
+    <div class="topbar-right">
+      <span id="mode-pill" class="pill">simulated</span>
+      <button id="btn-detect" class="primary small">Run Detection</button>
+    </div>
+  </header>
+
+  <main id="app">
+    <section id="view-dashboard" class="view active">
+      <h2>Cluster Dashboard</h2>
+      <div class="dash-section">
+        <div class="sec-event-head"><h3 style="margin:0">Active Incidents · Approvals · AI Investigations</h3></div>
+        <div class="cards" id="dashboard-cards"></div>
+      </div>
+      <div class="dash-grid">
+        <div class="dash-col">
+          <h3>Cluster Health</h3>
+          <div id="cluster-overview"></div>
+        </div>
+        <div class="dash-col">
+          <h3>Security Posture</h3>
+          <div id="dash-security" class="cards dash-cards"></div>
+        </div>
+      </div>
+      <div class="dash-grid">
+        <div class="dash-col">
+          <h3>Remediation &amp; Verification</h3>
+          <div id="dash-verification" class="cards dash-cards"></div>
+        </div>
+        <div class="dash-col">
+          <h3>Recent Security Events</h3>
+          <div id="dash-sec-events" class="sec-events"></div>
+        </div>
+      </div>
+      <h3>Recent Incidents</h3>
+      <div style="overflow-x:auto">
+        <table class="table" id="dashboard-incidents">
+          <thead><tr><th>ID</th><th>Type</th><th>Severity</th><th>Status</th><th>Action</th><th>Verify</th><th>Time</th></tr></thead>
+          <tbody></tbody>
+        </table>
+      </div>
+    </section>
+
+    <section id="view-workflow" class="view">
+      <h2>Workflow Simulator</h2>
+      <p class="muted">Live replay of an incident through the LangGraph pipeline. The LLM only proposes; the policy engine decides; humans approve; MCP tools verify their own work.</p>
+      <div class="row">
+        <select id="wf-incident"></select>
+        <button id="wf-play" class="primary small">▶ Play</button>
+        <button id="wf-pause" class="small">⏸ Pause</button>
+        <button id="wf-reset" class="small">↺ Reset</button>
+        <label class="muted wf-speed">speed
+          <select id="wf-speed">
+            <option value="900">slow</option>
+            <option value="450" selected>normal</option>
+            <option value="160">fast</option>
+          </select>
+        </label>
+      </div>
+      <div id="wf-track-wrap">
+        <div id="wf-track"></div>
+        <div id="wf-token"></div>
+      </div>
+      <div id="wf-console">
+        <div id="wf-log" class="log-panel"></div>
+        <div id="wf-summary" class="summary-card"></div>
+      </div>
+      <div id="wf-empty" class="muted">No incidents yet — run “Detection” on the dashboard first, or watch the built-in demo.</div>
+    </section>
+
+    <section id="view-incidents" class="view">
+      <h2>Incidents</h2>
+      <div class="filters">
+        <input id="filter-type" placeholder="filter type (high_cpu, ...)" />
+        <input id="filter-status" placeholder="filter status (REMEDIATED, ...)" />
+        <button id="btn-refresh" class="small">Refresh</button>
+      </div>
+      <table class="table" id="incident-table">
+        <thead><tr><th>ID</th><th>Type</th><th>Severity</th><th>Resource</th><th>Status</th><th>Policy</th><th>Exec</th><th>Verify</th><th>Detected</th></tr></thead>
+        <tbody></tbody>
+      </table>
+    </section>
+
+    <section id="view-detail" class="view">
+      <button id="btn-back" class="small">← Back to incidents</button>
+      <div id="incident-detail"></div>
+    </section>
+
+    <section id="view-security" class="view">
+      <h2>Security Findings — CKS 4-Layer Coverage</h2>
+      <p class="muted">Simulated findings across <b>Application · Container · Node-Cloud · Kubernetes-Cluster</b>. Every finding shows the full structure — Issue, Severity, Evidence, Affected Resource, Root Cause, Recommended Solution, Auto/Approval, Remediation &amp; Verification status — and is labelled <span class="tag sim">SIMULATED</span>. The LLM only proposes diagnosis; the policy engine decides.</p>
+      <div class="cards" id="sec-cards"></div>
+      <div class="filters">
+        <select id="sec-layer">
+          <option value="">all layers</option>
+          <option value="application">application</option>
+          <option value="container">container</option>
+          <option value="node_cloud">node_cloud</option>
+          <option value="kubernetes_cluster">kubernetes_cluster</option>
+        </select>
+        <select id="sec-status">
+          <option value="">all statuses</option>
+          <option value="OPEN">OPEN</option>
+          <option value="AWAITING_APPROVAL">AWAITING_APPROVAL</option>
+          <option value="REMEDIATED">REMEDIATED</option>
+          <option value="VERIFICATION_FAILED">VERIFICATION_FAILED</option>
+        </select>
+        <select id="sec-severity">
+          <option value="">all severities</option>
+          <option value="critical">critical</option>
+          <option value="high">high</option>
+          <option value="medium">medium</option>
+          <option value="low">low</option>
+        </select>
+        <select id="sec-domain">
+          <option value="">all domains</option>
+        </select>
+        <button id="btn-sec-refresh" class="small">↻ Refresh</button>
+      </div>
+      <table class="table" id="sec-table">
+        <thead><tr><th>ID</th><th>Layer</th><th>Domain</th><th>Finding</th><th>Severity</th><th>Status</th><th>Action</th><th>Verify</th><th></th></tr></thead>
+        <tbody></tbody>
+      </table>
+      <div id="finding-detail"></div>
+
+      <h2>Security Test Lab</h2>
+      <p class="muted">Safe, demo-isolated scenarios. Each one walks Create Issue → Detect → Diagnose (advisory LLM) → Policy → <em>Approve if required</em> → Remediate → Verify. All mutations stay inside the in-process simulation.</p>
+      <div class="lab-grid" id="lab-scenarios"></div>
+    </section>
+
+    <section id="view-approvals" class="view">
+      <h2>Pending Approvals</h2>
+      <div id="approval-list"></div>
+    </section>
+
+    <section id="view-tools" class="view">
+      <h2>Controlled MCP Tools</h2>
+      <p class="muted">Read tools are exposed for inspection/invocation. <strong>Action tools are only reachable through the policy engine inside an incident workflow.</strong></p>
+      <div id="tool-list"></div>
+      <button id="btn-check-unsafe" class="small">Verify no unsafe tools</button>
+      <pre id="unsafe-result" class="code-block"></pre>
+    </section>
+
+    <section id="view-knowledge" class="view">
+      <h2>Knowledge Base (RAG)</h2>
+      <div class="row">
+        <input id="rag-query" placeholder="ask the knowledge base, e.g. 'how to fix CrashLoopBackOff'" />
+        <button id="btn-rag" class="primary small">Search</button>
+      </div>
+      <div id="rag-results"></div>
+      <h3>RAG database</h3>
+      <p class="muted">Managed locally: pgvector (dense+keyword), OpenSearch (BM25) and the in-process TF-IDF index are fused per query.</p>
+      <div id="rag-db-land">
+        <div class="row">
+          <button id="btn-rag-refresh" class="small">↻ Refresh info</button>
+          <button id="btn-rag-reindex" class="small">Re-index knowledge → RAG DBs</button>
+        </div>
+        <div id="rag-db-info" class="status-grid"></div>
+      </div>
+      <h3>Documents</h3>
+      <div id="knowledge-docs"></div>
+    </section>
+
+    <section id="view-logs" class="view">
+      <h2>Application Logs — OpenSearch</h2>
+      <p class="muted">Structured container logs from the <code>kubernetes-logs</code> index (live OpenSearch :9200, deterministic simulation when unavailable). Filters are AND-ed; keyword searches message / pod / deployment.</p>
+      <div class="filters logs-filters">
+        <select id="log-namespace"><option value="">all namespaces</option></select>
+        <select id="log-pod"><option value="">all pods</option></select>
+        <select id="log-container"><option value="">all containers</option></select>
+        <select id="log-level">
+          <option value="">all levels</option>
+          <option value="INFO">INFO</option>
+          <option value="WARN">WARN</option>
+          <option value="ERROR">ERROR</option>
+        </select>
+        <input id="log-keyword" placeholder="keyword filter (message / pod)..." />
+      </div>
+      <div class="row">
+        <label class="muted log-time">since <input id="log-since" type="datetime-local" /></label>
+        <label class="muted log-time">until <input id="log-until" type="datetime-local" /></label>
+        <button id="btn-log-apply" class="primary small">Apply</button>
+        <button id="btn-log-reset" class="small">Reset</button>
+        <span id="log-count" class="muted log-count"></span>
+      </div>
+      <div style="overflow-x:auto">
+        <table class="table log-table" id="log-table">
+          <thead><tr><th>Timestamp</th><th>Namespace</th><th>Pod</th><th>Container</th><th>Level</th><th>Message</th></tr></thead>
+          <tbody></tbody>
+        </table>
+      </div>
+    </section>
+
+    <section id="view-status" class="view">
+      <h2>Component Status</h2>
+      <div id="component-status"></div>
+      <h3>Evaluation Summary</h3>
+      <pre id="evaluation-summary" class="code-block"></pre>
+    </section>
+  </main>
+
+  <script src="/static/app.js"></script>
+  <script src="/static/wfsim.js"></script>
+</body>
+</html>

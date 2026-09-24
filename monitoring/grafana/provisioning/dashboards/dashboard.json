@@ -1,0 +1,174 @@
+{
+  "annotations": {
+    "list": [
+      {
+        "builtIn": 1,
+        "datasource": { "type": "grafana", "uid": "-- Grafana --" },
+        "enable": true,
+        "hide": true,
+        "iconColor": "rgba(0, 211, 255, 1)",
+        "name": "Annotations & Alerts",
+        "type": "dashboard"
+      }
+    ]
+  },
+  "editable": true,
+  "fiscalYearStartMonth": 0,
+  "graphTooltip": 1,
+  "id": null,
+  "links": [],
+  "panels": [
+    {
+      "datasource": { "type": "prometheus", "uid": "Prometheus" },
+      "fieldConfig": {
+        "defaults": {
+          "color": { "mode": "palette-classic" },
+          "unit": "percentunit"
+        },
+        "overrides": []
+      },
+      "gridPos": { "h": 8, "w": 12, "x": 0, "y": 0 },
+      "title": "CPU utilisation per pod (ratio)",
+      "type": "timeseries",
+      "targets": [
+        {
+          "expr": "max by (pod, namespace) (pod:cpu_usage_ratio > 0)",
+          "legendFormat": "{{pod}}"
+        }
+      ]
+    },
+    {
+      "datasource": { "type": "prometheus", "uid": "Prometheus" },
+      "fieldConfig": {
+        "defaults": { "color": { "mode": "palette-classic" }, "unit": "percentunit" },
+        "overrides": []
+      },
+      "gridPos": { "h": 8, "w": 12, "x": 12, "y": 0 },
+      "title": "Memory working set ratio",
+      "type": "timeseries",
+      "targets": [
+        {
+          "expr": "max by (pod, namespace) (pod:memory_usage_ratio)",
+          "legendFormat": "{{pod}}"
+        }
+      ]
+    },
+    {
+      "datasource": { "type": "prometheus", "uid": "Prometheus" },
+      "fieldConfig": {
+        "defaults": { "color": { "mode": "palette-classic" }, "unit": "none" },
+        "overrides": []
+      },
+      "gridPos": { "h": 8, "w": 12, "x": 0, "y": 8 },
+      "title": "Container restarts",
+      "type": "timeseries",
+      "targets": [
+        {
+          "expr": "sum by (pod) (rate(kube_pod_container_status_restarts_total[15m]))",
+          "legendFormat": "{{pod}}"
+        }
+      ]
+    },
+    {
+      "datasource": { "type": "prometheus", "uid": "Prometheus" },
+      "fieldConfig": {
+        "defaults": { "color": { "mode": "palette-classic" }, "unit": "s" },
+        "overrides": []
+      },
+      "gridPos": { "h": 8, "w": 12, "x": 12, "y": 8 },
+      "title": "Certificate days left to expiry",
+      "type": "timeseries",
+      "targets": [
+        {
+          "expr": "days_left_to_expiry",
+          "legendFormat": "{{target}}"
+        }
+      ]
+    },
+    {
+      "datasource": { "type": "prometheus", "uid": "Prometheus" },
+      "fieldConfig": {
+        "defaults": { "color": { "mode": "palette-classic" }, "unit": "none" },
+        "overrides": []
+      },
+      "gridPos": { "h": 8, "w": 12, "x": 0, "y": 16 },
+      "title": "Falco security events",
+      "type": "timeseries",
+      "targets": [
+        {
+          "expr": "increase(falco_event_seen_total[1m])",
+          "legendFormat": "{{proc.name}}"
+        }
+      ]
+    },
+    {
+      "datasource": { "type": "prometheus", "uid": "Prometheus" },
+      "fieldConfig": {
+        "defaults": { "color": { "mode": "palette-classic" }, "unit": "none" },
+        "overrides": []
+      },
+      "gridPos": { "h": 8, "w": 12, "x": 12, "y": 16 },
+      "title": "Suspicious RBAC changes",
+      "type": "timeseries",
+      "targets": [
+        {
+          "expr": "increase(rbac_suspicious_change_total[1m])",
+          "legendFormat": "{{user.username}}"
+        }
+      ]
+    },
+    {
+      "datasource": { "type": "prometheus", "uid": "Prometheus" },
+      "fieldConfig": {
+        "defaults": {
+          "mappings": [{ "options": { "result:success": "Success" }, "type": "value" }],
+          "color": { "mode": "thresholds" },
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              { "color": "green", "value": null }
+            ]
+          },
+          "unit": "none"
+        },
+        "overrides": []
+      },
+      "gridPos": { "h": 4, "w": 12, "x": 12, "y": 24 },
+      "title": "Platform app status",
+      "type": "stat",
+      "targets": [
+        {
+          "expr": "up{job=\"platform-app\"}",
+          "legendFormat": "platform"
+        }
+      ]
+    },
+    {
+      "datasource": { "type": "prometheus", "uid": "Prometheus" },
+      "fieldConfig": {
+        "defaults": { "color": { "mode": "palette-classic" }, "unit": "none" },
+        "overrides": []
+      },
+      "gridPos": { "h": 8, "w": 12, "x": 0, "y": 24 },
+      "title": "Incidents detected per minute",
+      "type": "timeseries",
+      "targets": [
+        {
+          "expr": "increase(app_incidents_detected_total[1m])",
+          "legendFormat": "{{incident_type}}"
+        }
+      ]
+    }
+  ],
+  "refresh": "10s",
+  "schemaVersion": 38,
+  "style": "dark",
+  "tags": ["ai-observability", "kubernetes"],
+  "templating": { "list": [] },
+  "time": { "from": "now-1h", "to": "now" },
+  "timepicker": {},
+  "timezone": "browser",
+  "title": "AI Kubernetes Observability & Security Dashboard",
+  "uid": "ai-kubernetes-observability",
+  "version": 1
+}

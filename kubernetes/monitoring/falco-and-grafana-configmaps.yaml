@@ -1,0 +1,64 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: falco-rules
+  namespace: ai-observability-demo
+data:
+  falco_llm.yaml: |
+    - macro: demo_container
+      condition: container.id != host and k8s.ns.name = "ai-observability-demo"
+    - rule: Terminal Shell In Demo Container
+      desc: Shell spawned inside a demo container
+      condition: spawned_process and shell_procs and demo_container
+      output: "Shell in demo container (proc=%proc.cmdline user=%user.name image=%container.image.repository)"
+      priority: WARNING
+      tags: [container, shell]
+      source: syscall
+    - rule: Read Sensitive File From Demo Container
+      desc: Sensitive file read from inside a demo container
+      condition: open_read and sensitive_files and demo_container
+      output: "Sensitive file %fd.name read by %proc.cmdline (image=%container.image.repository)"
+      priority: WARNING
+      tags: [container, filesystem]
+      source: syscall
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: grafana-datasources
+  namespace: ai-observability-demo
+data:
+  prometheus.yaml: |
+    apiVersion: 1
+    datasources:
+      - name: Prometheus
+        type: prometheus
+        access: proxy
+        url: http://prometheus:9090
+        isDefault: true
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: grafana-dashboards
+  namespace: ai-observability-demo
+data:
+  provider.yaml: |
+    apiVersion: 1
+    providers:
+      - name: dashboards
+        orgId: 1
+        folder: AI Observability
+        type: file
+        options:
+          path: /var/lib/grafana/dashboards
+          foldersFromFilesStructure: false
+  dashboard.json: |
+    {
+      "title": "AI Kubernetes Observability & Security Dashboard",
+      "uid": "ai-kubernetes-observability",
+      "panels": [],
+      "schemaVersion": 38,
+      "style": "dark",
+      "timezone": "browser"
+    }

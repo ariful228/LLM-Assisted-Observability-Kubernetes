@@ -1,0 +1,293 @@
+<mxfile host="app.diagrams.net" agent="opencode" version="24.7.17">
+  <diagram id="llm-observability-arch" name="Architecture">
+    <mxGraphModel dx="0" dy="0" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="1300" pageHeight="1150" math="0" shadow="0">
+      <root>
+        <mxCell id="0" />
+        <mxCell id="1" parent="0" />
+
+        <!-- ===================== 1. SOURCES (left) ===================== -->
+        <mxCell id="src-prom" value="Prometheus (local :9090)&#10;metrics &amp; alert rules" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#f59e0b;strokeColor=#b45309;fontColor=#ffffff;fontSize=11;" vertex="1" parent="1">
+          <mxGeometry x="40" y="110" width="180" height="46" as="geometry" />
+        </mxCell>
+        <mxCell id="src-os" value="OpenSearch (local :9200)&#10;logs + audit events" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#0b3d91;strokeColor=#082f6e;fontColor=#ffffff;fontSize=11;" vertex="1" parent="1">
+          <mxGeometry x="40" y="180" width="180" height="46" as="geometry" />
+        </mxCell>
+        <mxCell id="src-kube" value="Kubernetes — local kind cluster&#10;pods · RBAC · events" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#326ce5;strokeColor=#1d4ed8;fontColor=#ffffff;fontSize=11;" vertex="1" parent="1">
+          <mxGeometry x="40" y="250" width="180" height="46" as="geometry" />
+        </mxCell>
+        <mxCell id="src-falco" value="Falco (in local cluster)&#10;runtime security events" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#8b5cf6;strokeColor=#7c3aed;fontColor=#ffffff;fontSize=11;" vertex="1" parent="1">
+          <mxGeometry x="40" y="320" width="180" height="46" as="geometry" />
+        </mxCell>
+        <mxCell id="src-cert" value="Certificate monitor&#10;TLS + threat-detection certs" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#0d9488;strokeColor=#0f766e;fontColor=#ffffff;fontSize=11;" vertex="1" parent="1">
+          <mxGeometry x="40" y="390" width="180" height="46" as="geometry" />
+        </mxCell>
+        <mxCell id="src-grafana" value="Grafana (local :3001)&#10;(P-01 .. P-08 rules)" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#f46800;strokeColor=#c2410c;fontColor=#ffffff;fontSize=11;" vertex="1" parent="1">
+          <mxGeometry x="40" y="540" width="180" height="46" as="geometry" />
+        </mxCell>
+
+        <!-- ===================== 2. COLLECTOR LAYER ===================== -->
+        <mxCell id="col-parent" value="Backend collector layer — adapters with simulated fallback&#10;(EXTERNAL_MODE = simulated | live | auto)" style="rounded=0;whiteSpace=wrap;html=1;verticalAlign=top;fillColor=#111827;strokeColor=#334155;fontColor=#94a3b8;fontStyle=1;fontSize=11;" vertex="1" parent="1">
+          <mxGeometry x="270" y="110" width="200" height="360" as="geometry" />
+        </mxCell>
+        <mxCell id="col-prom" value="Prometheus adapter" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#273449;strokeColor=#334155;fontColor=#e2e8f0;fontSize=10;" vertex="1" parent="col-parent">
+          <mxGeometry x="16" y="30" width="168" height="34" as="geometry" />
+        </mxCell>
+        <mxCell id="col-os" value="OpenSearch adapter" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#273449;strokeColor=#334155;fontColor=#e2e8f0;fontSize=10;" vertex="1" parent="col-parent">
+          <mxGeometry x="16" y="94" width="168" height="34" as="geometry" />
+        </mxCell>
+        <mxCell id="col-kube" value="Kubernetes adapter" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#273449;strokeColor=#334155;fontColor=#e2e8f0;fontSize=10;" vertex="1" parent="col-parent">
+          <mxGeometry x="16" y="158" width="168" height="34" as="geometry" />
+        </mxCell>
+        <mxCell id="col-falco" value="Falco + audit adapter" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#273449;strokeColor=#334155;fontColor=#e2e8f0;fontSize=10;" vertex="1" parent="col-parent">
+          <mxGeometry x="16" y="222" width="168" height="34" as="geometry" />
+        </mxCell>
+        <mxCell id="col-cert" value="Certificate adapter" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#273449;strokeColor=#334155;fontColor=#e2e8f0;fontSize=10;" vertex="1" parent="col-parent">
+          <mxGeometry x="16" y="286" width="168" height="34" as="geometry" />
+        </mxCell>
+
+        <!-- ===================== 3. DETECTOR ===================== -->
+        <mxCell id="det" value="Detector + Grafana ingest&#10;POST /api/incidents  ·  /detect" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#0e7490;strokeColor=#155e75;fontColor=#ffffff;fontSize=11;" vertex="1" parent="1">
+          <mxGeometry x="270" y="520" width="200" height="50" as="geometry" />
+        </mxCell>
+
+        <!-- ===================== 4. INVESTIGATION GRAPH ===================== -->
+        <mxCell id="inv-parent" value="LangGraph investigation graph&#10;LLM proposes · evidence always shown raw" style="rounded=0;whiteSpace=wrap;html=1;verticalAlign=top;fillColor=#111827;strokeColor=#334155;fontColor=#94a3b8;fontStyle=1;fontSize=11;" vertex="1" parent="1">
+          <mxGeometry x="540" y="110" width="250" height="390" as="geometry" />
+        </mxCell>
+        <mxCell id="n-classify" value="classify" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#273449;strokeColor=#475569;fontColor=#e2e8f0;fontSize=11;" vertex="1" parent="inv-parent">
+          <mxGeometry x="18" y="40" width="100" height="34" as="geometry" />
+        </mxCell>
+        <mxCell id="n-evidence" value="collect&#10;evidence" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#273449;strokeColor=#475569;fontColor=#e2e8f0;fontSize=11;" vertex="1" parent="inv-parent">
+          <mxGeometry x="134" y="40" width="100" height="34" as="geometry" />
+        </mxCell>
+        <mxCell id="n-correlate" value="correlate" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#273449;strokeColor=#475569;fontColor=#e2e8f0;fontSize=11;" vertex="1" parent="inv-parent">
+          <mxGeometry x="18" y="112" width="100" height="34" as="geometry" />
+        </mxCell>
+        <mxCell id="n-rag" value="rag_retrieve" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#273449;strokeColor=#475569;fontColor=#e2e8f0;fontSize=11;" vertex="1" parent="inv-parent">
+          <mxGeometry x="134" y="112" width="100" height="34" as="geometry" />
+        </mxCell>
+        <mxCell id="n-diagnose" value="diagnose (LLM)" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#0c4a6e;strokeColor=#38bdf8;fontColor=#e2e8f0;fontSize=11;" vertex="1" parent="inv-parent">
+          <mxGeometry x="18" y="184" width="100" height="34" as="geometry" />
+        </mxCell>
+        <mxCell id="n-risk" value="assess_risk (LLM)" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#0c4a6e;strokeColor=#38bdf8;fontColor=#e2e8f0;fontSize=11;" vertex="1" parent="inv-parent">
+          <mxGeometry x="134" y="184" width="100" height="34" as="geometry" />
+        </mxCell>
+        <mxCell id="n-plan" value="plan&#10;remediation" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#273449;strokeColor=#475569;fontColor=#e2e8f0;fontSize=11;" vertex="1" parent="inv-parent">
+          <mxGeometry x="18" y="256" width="100" height="34" as="geometry" />
+        </mxCell>
+        <mxCell id="n-policy" value="policy_check" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#14532d;strokeColor=#4ade80;fontColor=#e2e8f0;fontSize=11;" vertex="1" parent="inv-parent">
+          <mxGeometry x="134" y="256" width="100" height="34" as="geometry" />
+        </mxCell>
+
+        <!-- ===================== 5. DECISION + GATES ===================== -->
+        <mxCell id="decision" value="Policy&#10;decision" style="rhombus;whiteSpace=wrap;html=1;fillColor=#38bdf8;strokeColor=#0284c7;fontColor=#0f172a;fontStyle=1;fontSize=11;" vertex="1" parent="1">
+          <mxGeometry x="600" y="560" width="110" height="80" as="geometry" />
+        </mxCell>
+        <mxCell id="approval" value="Human Approval&#10;Approve / Reject (p1.25)" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#c084fc;strokeColor=#9333ea;fontColor=#ffffff;fontSize=11;" vertex="1" parent="1">
+          <mxGeometry x="420" y="700" width="180" height="56" as="geometry" />
+        </mxCell>
+
+        <!-- ===================== 6. EXECUTION GRAPH ===================== -->
+        <mxCell id="exec-parent" value="LangGraph execution graph" style="rounded=0;whiteSpace=wrap;html=1;verticalAlign=top;fillColor=#111827;strokeColor=#334155;fontColor=#94a3b8;fontStyle=1;fontSize=11;" vertex="1" parent="1">
+          <mxGeometry x="820" y="520" width="240" height="230" as="geometry" />
+        </mxCell>
+        <mxCell id="n-execute" value="execute (MCP action)" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#273449;strokeColor=#475569;fontColor=#e2e8f0;fontSize=11;" vertex="1" parent="exec-parent">
+          <mxGeometry x="20" y="40" width="200" height="34" as="geometry" />
+        </mxCell>
+        <mxCell id="n-verify" value="verify post-conditions" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#273449;strokeColor=#475569;fontColor=#e2e8f0;fontSize=11;" vertex="1" parent="exec-parent">
+          <mxGeometry x="20" y="102" width="200" height="34" as="geometry" />
+        </mxCell>
+        <mxCell id="n-fin" value="finalize → store, metrics, notify" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#273449;strokeColor=#475569;fontColor=#e2e8f0;fontSize=11;" vertex="1" parent="exec-parent">
+          <mxGeometry x="20" y="164" width="200" height="34" as="geometry" />
+        </mxCell>
+
+        <!-- ===================== MCP + STORE ===================== -->
+        <mxCell id="mcp" value="MCP controlled tool layer&#10;validate → allowlist → policy → authorize → execute → audit → verify&#10;(read-only + 4 action tools, no shell/kubectl)" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#7c2d12;strokeColor=#c2410c;fontColor=#ffffff;fontSize=11;" vertex="1" parent="1">
+          <mxGeometry x="820" y="800" width="240" height="80" as="geometry" />
+        </mxCell>
+        <mxCell id="store" value="Incident store&#10;data/incidents.json" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#1e293b;strokeColor=#475569;fontColor=#e2e8f0;fontSize=11;" vertex="1" parent="1">
+          <mxGeometry x="560" y="880" width="160" height="56" as="geometry" />
+        </mxCell>
+
+        <!-- ===================== RIGHT PILLAR ===================== -->
+        <mxCell id="llm" value="LLM&#10;mock · openai · ollama" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#1d4ed8;strokeColor=#1e40af;fontColor=#ffffff;fontSize=11;" vertex="1" parent="1">
+          <mxGeometry x="1130" y="110" width="150" height="56" as="geometry" />
+        </mxCell>
+        <mxCell id="rag" value="RAG knowledge base&#10;fused tfidf · pgvector · os&#10;/api/knowledge/db/info" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#1d4ed8;strokeColor=#1e40af;fontColor=#ffffff;fontSize=10;" vertex="1" parent="1">
+          <mxGeometry x="1130" y="196" width="150" height="62" as="geometry" />
+        </mxCell>
+        <mxCell id="policy" value="Policy engine&#10;(authoritative)" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#16a34a;strokeColor=#15803d;fontColor=#ffffff;fontSize=11;" vertex="1" parent="1">
+          <mxGeometry x="1130" y="282" width="150" height="56" as="geometry" />
+        </mxCell>
+        <mxCell id="slack" value="Slack alerts&#10;(notification only)" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#155e75;strokeColor=#0e7490;fontColor=#ffffff;fontSize=11;" vertex="1" parent="1">
+          <mxGeometry x="1130" y="368" width="150" height="56" as="geometry" />
+        </mxCell>
+        <mxCell id="langfuse" value="Langfuse traces&#10;self-hosted local :3000" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#155e75;strokeColor=#0e7490;fontColor=#ffffff;fontSize=11;" vertex="1" parent="1">
+          <mxGeometry x="1130" y="454" width="150" height="56" as="geometry" />
+        </mxCell>
+
+        <!-- ===================== EDGES: SOURCES → COLLECTORS ===================== -->
+        <mxCell id="e1" style="edgeStyle=orthogonalEdgeStyle;rounded=0;endArrow=block;strokeColor=#64748b;" edge="1" parent="1" source="src-prom" target="col-prom">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="e2" style="edgeStyle=orthogonalEdgeStyle;rounded=0;endArrow=block;strokeColor=#64748b;" edge="1" parent="1" source="src-os" target="col-os">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="e3" style="edgeStyle=orthogonalEdgeStyle;rounded=0;endArrow=block;strokeColor=#64748b;" edge="1" parent="1" source="src-kube" target="col-kube">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="e4" style="edgeStyle=orthogonalEdgeStyle;rounded=0;endArrow=block;strokeColor=#64748b;" edge="1" parent="1" source="src-falco" target="col-falco">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="e5" style="edgeStyle=orthogonalEdgeStyle;rounded=0;endArrow=block;strokeColor=#64748b;" edge="1" parent="1" source="src-cert" target="col-cert">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="e6" style="edgeStyle=orthogonalEdgeStyle;rounded=0;endArrow=block;strokeColor=#64748b;" edge="1" parent="1" source="src-grafana" target="det">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+
+        <!-- collectors → detector → investigation -->
+        <mxCell id="e7" style="edgeStyle=orthogonalEdgeStyle;rounded=0;endArrow=block;strokeColor=#94a3b8;dashed=1;" edge="1" parent="1" source="col-parent" target="det">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="e8" style="edgeStyle=orthogonalEdgeStyle;rounded=0;endArrow=block;strokeColor=#38bdf8;" edge="1" parent="1" source="det" target="n-classify">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+
+        <!-- investigation interior -->
+        <mxCell id="e9" style="edgeStyle=orthogonalEdgeStyle;rounded=0;endArrow=block;strokeColor=#475569;exitX=1;exitY=0.5;enterX=0;enterY=0.5;" edge="1" parent="inv-parent" source="n-classify" target="n-evidence">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="e10" style="edgeStyle=orthogonalEdgeStyle;rounded=0;endArrow=block;strokeColor=#475569;exitX=0.5;exitY=1;enterX=0.5;enterY=0;" edge="1" parent="inv-parent" source="n-evidence" target="n-correlate">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="e11" style="edgeStyle=orthogonalEdgeStyle;rounded=0;endArrow=block;strokeColor=#475569;exitX=1;exitY=0.5;enterX=0;enterY=0.5;" edge="1" parent="inv-parent" source="n-correlate" target="n-rag">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="e12" style="edgeStyle=orthogonalEdgeStyle;rounded=0;endArrow=block;strokeColor=#475569;exitX=0.5;exitY=1;enterX=0.5;enterY=0;" edge="1" parent="inv-parent" source="n-rag" target="n-diagnose">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="e13" style="edgeStyle=orthogonalEdgeStyle;rounded=0;endArrow=block;strokeColor=#475569;exitX=1;exitY=0.5;enterX=0;enterY=0.5;" edge="1" parent="inv-parent" source="n-diagnose" target="n-risk">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="e14" style="edgeStyle=orthogonalEdgeStyle;rounded=0;endArrow=block;strokeColor=#475569;exitX=0.5;exitY=1;enterX=0.5;enterY=0;" edge="1" parent="inv-parent" source="n-risk" target="n-plan">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="e15" style="edgeStyle=orthogonalEdgeStyle;rounded=0;endArrow=block;strokeColor=#475569;exitX=1;exitY=0.5;enterX=0;enterY=0.5;" edge="1" parent="inv-parent" source="n-plan" target="n-policy">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+
+        <!-- RIGHT PILLAR → INVESTIGATION (advisory/context, dashed) -->
+        <mxCell id="e16" style="edgeStyle=orthogonalEdgeStyle;rounded=0;endArrow=open;dashed=1;strokeColor=#38bdf8;exitX=0;exitY=0.5;enterX=1;enterY=0.5;" edge="1" parent="1" source="llm" target="n-diagnose">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="1080" y="145" as="sourcePoint" />
+            <mxPoint x="690" y="315" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="e17" style="edgeStyle=orthogonalEdgeStyle;rounded=0;endArrow=open;dashed=1;strokeColor=#38bdf8;exitX=0;exitY=0.5;" edge="1" parent="1" source="llm" target="n-risk">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="e18" style="edgeStyle=orthogonalEdgeStyle;rounded=0;endArrow=open;dashed=1;strokeColor=#38bdf8;exitX=0;exitY=0.5;" edge="1" parent="1" source="rag" target="n-rag">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="e19" style="edgeStyle=orthogonalEdgeStyle;rounded=0;endArrow=open;dashed=1;strokeColor=#4ade80;" edge="1" parent="1" source="policy" target="n-policy">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="e20" style="edgeStyle=orthogonalEdgeStyle;rounded=0;endArrow=open;dashed=1;strokeColor=#94a3b8;exitX=0;exitY=0.5;" edge="1" parent="1" source="slack" target="approval">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="e21" style="edgeStyle=orthogonalEdgeStyle;rounded=0;endArrow=open;dashed=1;strokeColor=#94a3b8;" edge="1" parent="1" source="langfuse" target="n-execute">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+
+        <!-- policy_check → decision; decision branches -->
+        <mxCell id="e22" style="edgeStyle=orthogonalEdgeStyle;rounded=0;endArrow=block;strokeColor=#38bdf8;" edge="1" parent="1" source="n-policy" target="decision">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="e23" value="AUTO · P-01 (high_cpu)" style="edgeStyle=orthogonalEdgeStyle;rounded=0;endArrow=block;strokeColor=#4ade80;fontColor=#86efac;fontSize=10;" edge="1" parent="1" source="decision" target="n-execute">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="e24" value="APPROVAL_REQUIRED" style="edgeStyle=orthogonalEdgeStyle;rounded=0;endArrow=block;strokeColor=#c084fc;fontColor=#d8b4fe;fontSize=10;" edge="1" parent="1" source="decision" target="approval">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="e25" value="approved" style="edgeStyle=orthogonalEdgeStyle;rounded=0;endArrow=block;strokeColor=#c084fc;fontColor=#d8b4fe;fontSize=10;" edge="1" parent="1" source="approval" target="n-execute">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="e26" value="NO_ACTION · fail-closed" style="edgeStyle=orthogonalEdgeStyle;rounded=0;endArrow=block;strokeColor=#f87171;fontColor=#fca5a5;fontSize=10;" edge="1" parent="1" source="decision" target="n-fin">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+
+        <!-- execution interior -->
+        <mxCell id="e27" style="edgeStyle=orthogonalEdgeStyle;rounded=0;endArrow=block;strokeColor=#475569;" edge="1" parent="exec-parent" source="n-execute" target="n-verify">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="e28" style="edgeStyle=orthogonalEdgeStyle;rounded=0;endArrow=block;strokeColor=#475569;" edge="1" parent="exec-parent" source="n-verify" target="n-fin">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="e29" style="edgeStyle=orthogonalEdgeStyle;rounded=0;endArrow=block;dashed=1;strokeColor=#fb923c;fontColor=#fdba74;fontSize=10;" value="runs via" edge="1" parent="1" source="n-execute" target="mcp">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="e30" style="edgeStyle=orthogonalEdgeStyle;rounded=0;endArrow=block;strokeColor=#94a3b8;" edge="1" parent="1" source="n-fin" target="store">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="e31" style="edgeStyle=orthogonalEdgeStyle;rounded=0;endArrow=block;dashed=1;strokeColor=#94a3b8;" edge="1" parent="1" source="det" target="store">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+
+        <!-- ===================== LOCAL INFRA (everything on 127.0.0.1) ===================== -->
+        <mxCell id="infra" value="Self-managed infrastructure — everything local on 127.0.0.1 · no cloud · one command = bash scripts/run_stack.sh all&#10;stack up/down · kube up/down · seed (RAG) · rag (DB info) · run · status" style="rounded=0;whiteSpace=wrap;html=1;verticalAlign=top;fillColor=#0b1220;strokeColor=#475569;fontColor=#94a3b8;fontStyle=1;fontSize=11;" vertex="1" parent="1">
+          <mxGeometry x="40" y="980" width="1220" height="156" as="geometry" />
+        </mxCell>
+        <mxCell id="run-stack" value="scripts/run_stack.sh&#10;stack · kube · seed · rag · run · status" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#134e4a;strokeColor=#2dd4bf;fontColor=#e2e8f0;fontSize=10;fontStyle=1;" vertex="1" parent="infra">
+          <mxGeometry x="24" y="52" width="180" height="52" as="geometry" />
+        </mxCell>
+        <mxCell id="compose" value="docker/docker-compose.yml — http://127.0.0.1&#10;platform :8000 · prometheus :9090 · grafana :3001 (admin/admin)&#10;opensearch :9200 · pgvector :5434 (rag/rag)&#10;pipeline simulator → /static/simulator.html" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#14532d;strokeColor=#4ade80;fontColor=#e2e8f0;fontSize=10;" vertex="1" parent="infra">
+          <mxGeometry x="280" y="40" width="330" height="76" as="geometry" />
+        </mxCell>
+        <mxCell id="langfuse-compose" value="docker/langfuse-compose.yml — self-hosted Langfuse (like case-aiops)&#10;langfuse :3000 · project &quot;ai-observability&quot; · LANGFUSE_ENABLED=true&#10;its own postgres :5433 · clickhouse · redis · minio :9092/:9093" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#701a75;strokeColor=#e879f9;fontColor=#e2e8f0;fontSize=10;" vertex="1" parent="infra">
+          <mxGeometry x="660" y="40" width="330" height="76" as="geometry" />
+        </mxCell>
+        <mxCell id="kind-cluster" value="kubernetes/kind/kind-cluster.yaml — kind cluster&#10;ai-observability-local · single node · tools/bin kind 0.26 + kubectl 1.31&#10;demo workloads (cpu/memory/crash/cert/ci-bot) · falco privileged ns" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#78350f;strokeColor=#fbbf24;fontColor=#e2e8f0;fontSize=10;" vertex="1" parent="infra">
+          <mxGeometry x="1040" y="40" width="160" height="76" as="geometry" />
+        </mxCell>
+        <mxCell id="ii1" style="edgeStyle=orthogonalEdgeStyle;rounded=0;endArrow=block;dashed=1;strokeColor=#2dd4bf;" edge="1" parent="infra" source="run-stack" target="compose">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="ii2" style="edgeStyle=orthogonalEdgeStyle;rounded=0;endArrow=block;dashed=1;strokeColor=#e879f9;" edge="1" parent="infra" source="run-stack" target="langfuse-compose">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="ii3" style="edgeStyle=orthogonalEdgeStyle;rounded=0;endArrow=block;dashed=1;strokeColor=#fbbf24;" edge="1" parent="infra" source="run-stack" target="kind-cluster">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="i-note" value="everything above (sources, LangGraph, RAG, MCP, approvals, trace) runs on this local stack — Grafana dashboard, OpenSearch indices and the seeded RAG come up with run_stack.sh; status health-checks all of it." style="text;html=1;fontSize=10;fontColor=#64748b;align=left;" vertex="1" parent="infra">
+          <mxGeometry x="24" y="130" width="900" height="18" as="geometry" />
+        </mxCell>
+
+        <!-- ===================== RAG BACKENDS (fused) ===================== -->
+        <mxCell id="rag-dbs" value="RAG backends (fused)" style="rounded=0;whiteSpace=wrap;html=1;verticalAlign=top;fillColor=#1e293b;strokeColor=#475569;fontColor=#94a3b8;fontStyle=1;fontSize=11;" vertex="1" parent="1">
+          <mxGeometry x="1124" y="524" width="172" height="164" as="geometry" />
+        </mxCell>
+        <mxCell id="rb-pgv" value="pgvector :5434&#10;vector384 + tsvector&#10;local:hashbow384" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#273449;strokeColor=#34d399;fontColor=#e2e8f0;fontSize=9;" vertex="1" parent="rag-dbs">
+          <mxGeometry x="12" y="32" width="148" height="34" as="geometry" />
+        </mxCell>
+        <mxCell id="rb-os" value="opensearch :9200&#10;BM25 index knowledge-chunks" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#273449;strokeColor=#22d3ee;fontColor=#e2e8f0;fontSize=9;" vertex="1" parent="rag-dbs">
+          <mxGeometry x="12" y="76" width="148" height="34" as="geometry" />
+        </mxCell>
+        <mxCell id="rb-tfidf" value="tfidf in-process&#10;(always on)" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#273449;strokeColor=#e879f9;fontColor=#e2e8f0;fontSize=9;" vertex="1" parent="rag-dbs">
+          <mxGeometry x="12" y="120" width="148" height="34" as="geometry" />
+        </mxCell>
+        <mxCell id="e40" style="edgeStyle=orthogonalEdgeStyle;rounded=0;endArrow=block;dashed=1;strokeColor=#38bdf8;" edge="1" parent="1" source="rag" target="rag-dbs">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+
+        <!-- title + legend -->
+        <mxCell id="title" value="LLM-Assisted Observability &amp; Security for Kubernetes — end-to-end pipeline" style="text;html=1;fontSize=16;fontStyle=1;align=center;fontColor=#e2e8f0;" vertex="1" parent="1">
+          <mxGeometry x="300" y="20" width="600" height="30" as="geometry" />
+        </mxCell>
+        <mxCell id="legend" value="Everything self-managed &amp; local on 127.0.0.1&#10;(docker compose + langfuse-compose + kind cluster + tools/bin)&#10;Solid  = execution data flow · Dashed = advisory / context / notifications&#10;LLM 🡒 proposals only · Policy engine 🡒 authoritative decision" style="text;html=1;fontSize=11;align=left;fontColor=#94a3b8;" vertex="1" parent="1">
+          <mxGeometry x="40" y="40" width="340" height="58" as="geometry" />
+        </mxCell>
+      </root>
+    </mxGraphModel>
+  </diagram>
+</mxfile>

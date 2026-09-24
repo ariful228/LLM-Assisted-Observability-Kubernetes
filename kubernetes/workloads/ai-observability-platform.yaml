@@ -1,0 +1,62 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: ai-platform
+  namespace: ai-observability-demo
+  labels:
+    app: ai-platform
+spec:
+  replicas: 1
+  selector: { matchLabels: { app: ai-platform } }
+  template:
+    metadata:
+      labels:
+        app: ai-platform
+        prometheus.io/scrape: "true"
+        prometheus.io/port: "8000"
+    spec:
+      serviceAccountName: platform
+      containers:
+        - name: api
+          image: ai-observability-platform:latest
+          imagePullPolicy: IfNotPresent
+          ports: [{ containerPort: 8000 }]
+          env:
+            - name: EXTERNAL_MODE
+              value: "live"
+            - name: PROMETHEUS_URL
+              value: "http://prometheus:9090"
+            - name: OPENSEARCH_URL
+              value: "http://opensearch:9200"
+            - name: SLACK_WEBHOOK_URL
+              valueFrom: { secretKeyRef: { name: ai-platform-secrets, key: slack_webhook_url, optional: true } }
+            - name: LANGFUSE_ENABLED
+              value: "false"
+            - name: LLM_PROVIDER
+              value: "mock"
+          livenessProbe:
+            httpGet: { path: /health, port: 8000 }
+            initialDelaySeconds: 10
+            periodSeconds: 15
+          readinessProbe:
+            httpGet: { path: /health, port: 8000 }
+            initialDelaySeconds: 5
+            periodSeconds: 10
+          resources:
+            requests: { cpu: "100m", memory: "128Mi" }
+            limits: { cpu: "500m", memory: "512Mi" }
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: platform
+  namespace: ai-observability-demo
+  labels:
+    app: ai-platform
+spec:
+  type: ClusterIP
+  selector: { app: ai-platform }
+  ports:
+    - name: http
+      port: 8000
+      targetPort: 8000

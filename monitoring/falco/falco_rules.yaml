@@ -1,0 +1,42 @@
+# Falco rules - subset relevant to the LLM-Assisted Observability demo.
+# Load these together with the defaults via falcoctl / falco config:
+#    falco --disable modern_ebpf ... --list / -r /etc/falco/rules.d/*.yaml
+
+- macro: demo_container
+  condition: container.id != host and k8s.ns.name = "ai-observability-demo"
+
+# Scenario 5a: attacker spawns a shell inside the demo test pod
+- rule: Terminal Shell In Demo Container
+  desc: A shell process was spawned inside a demo container
+  condition: >
+    demoned_and_spawned_process
+    and shell_procs
+    and demo_container
+  output: >
+    Shell spawned in demo container (user=%user.name container=%container.id
+    image=%container.image.repository proc=%proc.cmdline parent=%proc.pname)
+  priority: WARNING
+  tags: [maturity_stable, container, shell]
+  source: syscall
+
+# Scenario 5b: reading sensitive host files from inside a container
+- rule: Read Sensitive File From Demo Container
+  desc: Container process reads sensitive file at startup
+  condition: >
+    open_read
+    and sensitive_files
+    and demo_container
+    and not proc.name in (falco, process-query-monitor)
+  output: >
+    Sensitive file %fd.name read by %proc.cmdline in container %container.id
+    (user=%user.name image=%container.image.repository)
+  priority: WARNING
+  tags: [maturity_stable, filesystem, container]
+  source: syscall
+
+# Scenario 6: suspicious API processes are produced by the audit-log collector;
+# RBAC changes surface as K8s audit entries, matched by the platform correlator.
+
+# Sample-only: getter for events used by the integration (see exporter)
+- list: app_shells
+  items: [bash, sh, dash, zsh]

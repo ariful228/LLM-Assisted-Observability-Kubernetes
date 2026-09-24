@@ -1,0 +1,125 @@
+# Workloads for the demo scenarios.
+# In SIMULATED mode (EXTERNAL_MODE=simulated) these are represented by the
+# backend's simulated cluster state instead of live pods, so the platform runs
+# standalone. Apply this file when running against a real cluster.
+
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: cpu-demo
+  namespace: ai-observability-demo
+  labels: { app: cpu-demo, observability.llm/scenario: high-cpu }
+spec:
+  replicas: 2
+  selector: { matchLabels: { app: cpu-demo } }
+  template:
+    metadata:
+      labels: { app: cpu-demo }
+    spec:
+      containers:
+        - name: app
+          image: busybox:1.36
+          command: ["/bin/sh", "-c"]
+          args: ["while true; do true; done"]
+          resources:
+            requests: { cpu: "100m", memory: "64Mi" }
+            limits: { cpu: "1", memory: "256Mi" }
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: memory-demo
+  namespace: ai-observability-demo
+  labels: { app: memory-demo, observability.llm/scenario: memory-oom }
+spec:
+  replicas: 2
+  selector: { matchLabels: { app: memory-demo } }
+  template:
+    metadata:
+      labels: { app: memory-demo }
+    spec:
+      containers:
+        - name: app
+          image: busybox:1.36
+          command: ["/bin/sh", "-c"]
+          args: ["while true; do sleep 0.2; done"]
+          resources:
+            requests: { cpu: "50m", memory: "128Mi" }
+            limits: { cpu: "200m", memory: "256Mi" }
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: crash-demo
+  namespace: ai-observability-demo
+  labels: { app: crash-demo, observability.llm/scenario: crashloop }
+spec:
+  replicas: 1
+  selector: { matchLabels: { app: crash-demo } }
+  template:
+    metadata:
+      labels: { app: crash-demo }
+    spec:
+      containers:
+        - name: app
+          image: busybox:1.36
+          command: ["/bin/sh", "-c"]
+          args: ["echo BOOTFAIL; exit 1"]
+          resources:
+            requests: { cpu: "50m", memory: "64Mi" }
+            limits: { cpu: "100m", memory: "128Mi" }
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: cert-demo
+  namespace: ai-observability-demo
+  labels: { app: cert-demo, observability.llm/scenario: certificate-expiry }
+spec:
+  replicas: 2
+  selector: { matchLabels: { app: cert-demo } }
+  template:
+    metadata:
+      labels: { app: cert-demo }
+    spec:
+      containers:
+        - name: tls
+          image: nginx:1.27
+          ports: [{ containerPort: 443 }]
+          resources:
+            requests: { cpu: "50m", memory: "64Mi" }
+            limits: { cpu: "200m", memory: "128Mi" }
+---
+apiVersion: v1
+kind: Pod
+metadata:
+  name: test-pod
+  namespace: ai-observability-demo
+  labels:
+    app: test-pod
+    observability.llm/scenario: falco-security
+spec:
+  containers:
+    - name: app
+      image: busybox:1.36
+      command: ["/bin/sh", "-c", "while true; do sleep 5; done"]
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: ci-bot
+  namespace: ai-observability-demo
+  labels: { app: ci-bot, observability.llm/scenario: suspicious-rbac }
+spec:
+  replicas: 1
+  selector: { matchLabels: { app: ci-bot } }
+  template:
+    metadata:
+      labels: { app: ci-bot }
+    spec:
+      serviceAccountName: allowlisted-service-account
+      containers:
+        - name: bot
+          image: busybox:1.36
+          command: ["/bin/sh", "-c", "while true; do sleep 10; done"]

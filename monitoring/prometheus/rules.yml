@@ -1,0 +1,94 @@
+groups:
+  - name: ai-observability.rules
+    rules:
+      - record: pod:cpu_usage_ratio
+        expr: |
+          rate(container_cpu_usage_seconds_total{container!=""}[5m])
+            / (sum by (pod, namespace) (container_spec_cpu_quota{container!=""})
+               / 100000)
+
+      - record: pod:memory_usage_ratio
+        expr: |
+          container_memory_working_set_bytes{container!=""}
+            / on(namespace, pod, container) group_left container_spec_memory_limit_bytes{container!=""}
+
+  - name: ai-observability.alerts
+    rules:
+      # Scenario 1: sustained high CPU on a workload
+      - alert: HighCpuUtilization
+        expr: max by (pod, namespace) (pod:cpu_usage_ratio) > 0.80
+        for: 5m
+        labels:
+          severity: high
+          incident_type: high_cpu
+        annotations:
+          summary: "Pod {{ $labels.pod }} running above 80% CPU for 5 minutes"
+          runbook: "knowledge/kubernetes-troubleshooting/sustained-high-cpu.md"
+
+      # Scenario 2: memory pressure / OOM risk
+      - alert: HighMemoryUsage
+        expr: max by (pod, namespace) (pod:memory_usage_ratio) > 0.85
+        for: 2m
+        labels:
+          severity: high
+          incident_type: high_memory
+        annotations:
+          summary: "Pod {{ $labels.pod }} memory working set over 85% of limit"
+          runbook: "knowledge/kubernetes-troubleshooting/memory-pressure-and-oom.md"
+
+      # Scenario 3: CrashLoopBackOff
+      - alert: FrequentPodRestart
+        expr: rate(kube_pod_container_status_restarts_total[15m]) > 1
+        labels:
+          severity: critical
+          incident_type: crashloop_backoff
+        annotations:
+          summary: "Container restarts elevated on {{ $labels.pod }}"
+          runbook: "knowledge/kubernetes-troubleshooting/crashloopbackoff.md"
+
+      # Scenario 4: certificate expiry
+      - alert: CertificateExpiringSoon
+        expr: days_left_to_expiry < cert_threshold_days
+        labels:
+          severity: high
+          incident_type: certificate_expiry
+        annotations:
+          summary: "Certificate for {{ $labels.target }} expiring"
+          runbook: "knowledge/certificates/tls-certificate-expiry.md"
+
+      # THREAT-DETECTION CERTIFICATE (Scenario 4 is threatening so can be separate):
+      - alert: ThreatDetectionCertificateExpiry
+        expr: threat_detection_days_left_to_expiry < cert_mandatory_threshold_days
+        labels:
+          severity: critical
+          incident_type: certificate_expiry_threat
+        annotations:
+          summary: "Threat-detection certificate expiring critically"
+
+      # Scenarios 5-6: security events surface via Falco + audit log ingestion
+      - alert: FalcoSecurityEvent
+        expr: increase(falco_event_seen_total[5m]) > 0
+        labels:
+          severity: critical
+          incident_type: falco_security
+        annotations:
+          summary: "Falco flagged security events"
+          runbook: "knowledge/falco/falco-events-interpretation.md"
+
+      - alert: SuspiciousRbacChange
+        expr: increase(rbac_suspicious_change_total[5m]) > 0
+        labels:
+          severity: high
+          incident_type: suspicious_rbac
+        annotations:
+          summary: "Suspicious RBAC change detected"
+          runbook: "knowledge/audit-logs/audit-log-interpretation.md"
+
+      # Orchestrator/availability
+      - alert: PlatformAppDown
+        expr: up{job="platform-app"} == 0
+        for: 1m
+        labels:
+          severity: critical
+        annotations:
+          summary: "AI observability platform is down"

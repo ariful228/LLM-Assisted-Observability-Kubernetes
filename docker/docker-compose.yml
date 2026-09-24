@@ -1,0 +1,158 @@
+# Local observability stack for the AI-O11y platform (DEV — all ports on loopback).
+#   docker compose -f docker/docker-compose.yml up -d
+#   Prometheus  -> http://127.0.0.1:9090
+#   Grafana     -> http://127.0.0.1:3001  (admin / admin)
+#   Slack sink  -> http://127.0.0.1:5050  (inbox for platform "Slack" notifications)
+services:
+  platform:
+    build:
+      context: ..
+      dockerfile: docker/Dockerfile
+    container_name: ai-obsv-platform
+    ports:
+      - "127.0.0.1:8000:8000"
+    environment:
+      EXTERNAL_MODE: auto
+      LLM_PROVIDER: mock
+      FORCE_SIMULATION: "false"
+      DATA_DIR: /app/data
+      KNOWLEDGE_DIR: /app/knowledge
+      PROMETHEUS_URL: http://prometheus:9090
+      OPENSEARCH_URL: http://opensearch:9200
+      GRAFANA_URL: http://grafana:3000
+      PGVECTOR_URL: postgresql://rag:rag@pgvector:5432/rag
+      OPENSEARCH_INDEX_KNOWLEDGE: knowledge-chunks
+      SLACK_ENABLED: "true"
+      SLACK_WEBHOOK_URL: http://slack-sink:5050/hooks/demo
+      LANGFUSE_ENABLED: "true"
+      LANGFUSE_HOST: http://host.docker.internal:3000
+      LANGFUSE_PUBLIC_KEY: pk-lf-976d879582b60acf
+      LANGFUSE_SECRET_KEY: sk-lf-31905c84394ffc10
+      KUBECONFIG: /secrets/kubeconfig-kind.yaml
+    extra_hosts:
+      # lets the container reach Langfuse (web on host:3000) and the kind API server
+      - "host.docker.internal:host-gateway"
+    volumes:
+      - platform-data:/app/data
+      - ../tools/bin/kubeconfig/kubeconfig-kind.yaml:/secrets/kubeconfig-kind.yaml:ro
+    depends_on:
+      prometheus:
+        condition: service_healthy
+      grafana:
+        condition: service_healthy
+      opensearch:
+        condition: service_healthy
+      pgvector:
+        condition: service_healthy
+      slack-sink:
+        condition: service_started
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:8000/health')"]
+      interval: 15s
+      timeout: 5s
+      retries: 5
+
+  slack-sink:
+    build: ./slack-sink
+    container_name: ai-obsv-slack-sink
+    ports:
+      - "127.0.0.1:5050:5050"
+    volumes:
+      - slack-data:/data
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:5050/')"]
+      interval: 10s
+      timeout: 5s
+      retries: 12
+      start_period: 5s
+
+  prometheus:
+    image: prom/prometheus:v2.53.0
+    container_name: ai-obsv-prometheus
+    ports:
+      - "127.0.0.1:9090:9090"
+    volumes:
+      - ../monitoring/prometheus/prometheus.yml:/etc/prometheus/prometheus.yml:ro
+      - ../monitoring/prometheus/rules.yml:/etc/prometheus/rules.yml:ro
+      - prom-data:/prometheus
+    command:
+      - --config.file=/etc/prometheus/prometheus.yml
+      - --storage.tsdb.retention.time=24h
+    healthcheck:
+      test: wget --no-verbose --tries=1 --spider http://localhost:9090/-/healthy || exit 1
+      interval: 5s
+      timeout: 5s
+      retries: 24
+      start_period: 10s
+
+  grafana:
+    image: grafana/grafana:11.1.0
+    container_name: ai-obsv-grafana
+    ports:
+      - "127.0.0.1:3001:3000"
+    environment:
+      GF_SERVER_HTTP_PORT: "3000"
+      GF_SECURITY_ADMIN_USER: admin
+      GF_SECURITY_ADMIN_PASSWORD: admin
+      GF_AUTH_ANONYMOUS_ENABLED: "true"
+    volumes:
+      - ../monitoring/grafana/provisioning/datasources:/etc/grafana/provisioning/datasources:ro
+      - ../monitoring/grafana/provisioning/dashboards:/etc/grafana/provisioning/dashboards:ro
+      - ../monitoring/grafana/provisioning/dashboards/dashboard.json:/var/lib/grafana/dashboards/dashboard.json:ro
+      - grafana-data:/var/lib/grafana
+    depends_on:
+      prometheus:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD-SHELL", "curl -fs http://localhost:3000/api/health || exit 1"]
+      interval: 5s
+      timeout: 5s
+      retries: 24
+      start_period: 15s
+
+  opensearch:
+    image: opensearchproject/opensearch:2.15.0
+    container_name: ai-obsv-opensearch
+    environment:
+      discovery.type: single-node
+      bootstrap.memory_lock: "true"
+      OPENSEARCH_INITIAL_ADMIN_PASSWORD: S3curel0cal!2026
+      plugins.security.disabled: "true"
+    ports:
+      - "127.0.0.1:9200:9200"
+    ulimits:
+      memlock: { soft: -1, hard: -1 }
+    volumes:
+      - os-data:/usr/share/opensearch/data
+    healthcheck:
+      test: ["CMD-SHELL", "curl -fs http://localhost:9200/_cluster/health || exit 1"]
+      interval: 10s
+      timeout: 5s
+      retries: 30
+      start_period: 30s
+
+  pgvector:
+    image: pgvector/pgvector:pg16
+    container_name: ai-obsv-pgvector
+    environment:
+      POSTGRES_DB: rag
+      POSTGRES_USER: rag
+      POSTGRES_PASSWORD: rag
+    ports:
+      - "127.0.0.1:5434:5432"
+    volumes:
+      - pg-data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U rag -d rag"]
+      interval: 5s
+      timeout: 5s
+      retries: 12
+      start_period: 5s
+
+volumes:
+  platform-data:
+  prom-data:
+  grafana-data:
+  os-data:
+  pg-data:
+  slack-data:

@@ -1,0 +1,20 @@
+# Local single-node Kubernetes cluster (kind = Kubernetes-IN-Docker).
+#   kind create cluster --config kubernetes/kind/kind-cluster.yaml
+#
+# The platform's KubeAdapter connects to this cluster via the kubeconfig that
+# `kind create cluster` writes to ~/.kube/config — no extra port mappings are
+# needed for the API reads. Optional ingress is left out to stay self-contained.
+kind: Cluster
+apiVersion: kind.x-k8s.io/v1alpha4
+name: ai-observability-local
+nodes:
+  - role: control-plane
+    extraMounts:
+      # optional: share a local dir for demo edge cases (certificates, collected logs)
+      - hostPath: /var/lib/ai-observability
+        containerPath: /var/lib/ai-observability
+        propagation: HostToContainer
+containerdConfigPatches:
+  - |-
+    [plugins."io.containerd.grpc.v1.cri".registry.mirrors."docker.io"]
+      endpoint = ["https://registry-1.docker.io"]
