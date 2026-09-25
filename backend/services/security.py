@@ -1,6 +1,6 @@
-"""Deterministic, stateful security-findings service (CKS coverage).
+"""Deterministic, stateful security-findings service (four-layer coverage).
 
-Provides findings across the four CKS layers — application, container,
+Provides findings across the four security layers — application, container,
 node-cloud, kubernetes-cluster — seeded from a static, deterministic scan.
 Every finding carries the full per-finding structure (Issue, Severity,
 Evidence, Affected Resource, Root Cause, Recommended Solution, Auto/Approval
@@ -56,7 +56,7 @@ def next_finding_id() -> str:
 
 
 # ---------------------------------------------------------------------------
-# Seed data — deterministic simulated CKS findings (labelled SIMULATED)
+# Seed data — deterministic simulated security findings (labelled SIMULATED)
 # ---------------------------------------------------------------------------
 
 

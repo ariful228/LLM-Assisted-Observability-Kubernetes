@@ -1,4 +1,4 @@
-"""Security findings API: CKS four-layer coverage + findings lifecycle.
+"""Security findings API: four-layer coverage + findings lifecycle.
 
 Endpoints are read-only except the explicit approval / remediation decision
 flow and the lab scenario creator, both of which keep the LLM advisory and the
@@ -24,7 +24,7 @@ router = APIRouter(prefix="/api/security", tags=["security"])
 
 @router.get("/layers")
 def layers() -> dict[str, Any]:
-    """The four CKS security layers with counts."""
+    """The four security layers with counts."""
     data = security.stats()
     layers_out = []
     for layer in SecurityLayer:

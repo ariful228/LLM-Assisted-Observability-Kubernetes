@@ -54,7 +54,7 @@ class LLM:
         if self.provider() == "mock":
             return _mock_finding_diagnosis(finding)
         prompt = (
-            "You are a Kubernetes security engineer (CKS perspective). Given the "
+            "You are a Kubernetes security engineer. Given the "
             "security finding below return a single paragraph: what the issue is, "
             "why it matters, and a proposed remediation. End with the line "
             "'POLICY ENGINE AUTHORITATIVE — LLM IS ADVISORY ONLY.'\n"

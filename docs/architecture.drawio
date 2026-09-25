@@ -241,7 +241,7 @@
         <mxCell id="run-stack" value="scripts/run_stack.sh&#10;stack · kube · seed · rag · run · status" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#134e4a;strokeColor=#2dd4bf;fontColor=#e2e8f0;fontSize=10;fontStyle=1;" vertex="1" parent="infra">
           <mxGeometry x="24" y="52" width="180" height="52" as="geometry" />
         </mxCell>
-        <mxCell id="compose" value="docker/docker-compose.yml — http://127.0.0.1&#10;platform :8000 · prometheus :9090 · grafana :3001 (admin/admin)&#10;opensearch :9200 · pgvector :5434 (rag/rag)&#10;pipeline simulator → /static/simulator.html" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#14532d;strokeColor=#4ade80;fontColor=#e2e8f0;fontSize=10;" vertex="1" parent="infra">
+        <mxCell id="compose" value="docker/docker-compose.yml — http://127.0.0.1&#10;platform :8199 · prometheus :9090 · grafana :3001 (admin/admin)&#10;opensearch :9200 · pgvector :5434 (rag/rag)&#10;pipeline simulator → /static/simulator.html" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#14532d;strokeColor=#4ade80;fontColor=#e2e8f0;fontSize=10;" vertex="1" parent="infra">
           <mxGeometry x="280" y="40" width="330" height="76" as="geometry" />
         </mxCell>
         <mxCell id="langfuse-compose" value="docker/langfuse-compose.yml — self-hosted Langfuse (like case-aiops)&#10;langfuse :3000 · project &quot;ai-observability&quot; · LANGFUSE_ENABLED=true&#10;its own postgres :5433 · clickhouse · redis · minio :9092/:9093" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#701a75;strokeColor=#e879f9;fontColor=#e2e8f0;fontSize=10;" vertex="1" parent="infra">

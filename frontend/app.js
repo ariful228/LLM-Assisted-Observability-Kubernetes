@@ -37,7 +37,10 @@ function showView(view, incident = null) {
     if (section) section.classList.add("active");
   }
   document.querySelectorAll("nav button").forEach((b) => b.classList.toggle("active", b.dataset.view === view));
-  if (view === "dashboard") refresh();
+  if (view === "dashboard") {
+    window.scrollTo({ top: 0 });
+    refresh();
+  }
   if (view === "workflow") typeof WorkflowSim !== "undefined" && WorkflowSim.refresh();
   if (view === "incidents") loadIncidents();
   if (view === "security") loadSecurity();
@@ -47,6 +50,18 @@ function showView(view, incident = null) {
   if (view === "logs") loadLogs();
   if (view === "status") loadStatus();
 }
+
+// ---------- dashboard category nav ----------
+document.querySelectorAll("#cat-nav a").forEach((link) => {
+  link.addEventListener("click", (e) => {
+    const id = link.getAttribute("href").slice(1);
+    const target = document.getElementById(id);
+    if (!target) return;
+    e.preventDefault();
+    target.scrollIntoView({ behavior: "smooth", block: "start" });
+    document.querySelectorAll("#cat-nav a").forEach((a) => a.classList.toggle("active", a === link));
+  });
+});
 
 // ---------- shared ----------
 async function loadMode() {
@@ -59,13 +74,88 @@ function severityTag(sev) {
 }
 
 // ---------- dashboard ----------
+// Incident types grouped by dashboard category.
+const SEC_TYPES = new Set(["falco_security", "suspicious_rbac"]);
+const UTIL_TYPES = new Set(["high_cpu", "high_memory", "oom_killed"]);
+
+const SIM_BASE = "/static/simulator.html";
+
+const SIM_STAGES = [
+  { key: "preflight", n: 1, icon: "🧰", label: "Preflight & local stack" },
+  { key: "kube", n: 2, icon: "🧊", label: "Local kind cluster" },
+  { key: "seed", n: 3, icon: "🌱", label: "RAG knowledge seed" },
+  { key: "detect", n: 4, icon: "📡", label: "Detection & ingest" },
+  { key: "investigate", n: 5, icon: "🕵️", label: "LangGraph investigate" },
+  { key: "rag", n: 6, icon: "🔎", label: "RAG retrieve + diagnose" },
+  { key: "policy", n: 7, icon: "🛡", label: "Plan + policy gate" },
+  { key: "approval", n: 8, icon: "⚖", label: "Human approval" },
+  { key: "execute", n: 9, icon: "🛠", label: "MCP execute + verify" },
+  { key: "finalize", n: 10, icon: "🏁", label: "Finalize & trace" },
+];
+
+const SIM_MAPS = [
+  { id: "stack", icon: "🧱", label: "Local stack" },
+  { id: "langmap", icon: "🕸", label: "LangGraph pipeline" },
+  { id: "rag", icon: "🔎", label: "Fused RAG" },
+  { id: "gates", icon: "🛡", label: "Policy & approval gates" },
+  { id: "mcp", icon: "🛠", label: "MCP execution" },
+  { id: "scenarios", icon: "📚", label: "Scenario registry" },
+  { id: "detectflow", icon: "📡", label: "Detection flow" },
+  { id: "tech", icon: "🧰", label: "Technology inventory" },
+  { id: "llm", icon: "🤖", label: "Where the LLM is used" },
+];
+
+const STACK_LINKS = {
+  prometheus: "http://localhost:9090",
+  grafana: "http://localhost:3001",
+  opensearch: "http://localhost:9200",
+  langfuse: "http://localhost:3000",
+  kubernetes: null,
+};
+
+function simStageHref(key) { return `${SIM_BASE}#stage=${key}`; }
+function simMapHref(id) { return `${SIM_BASE}#${id}`; }
+
+function renderSimulatorLinks() {
+  $("#sim-stages").innerHTML = SIM_STAGES.map(
+    (s) => `<a class="sim-link" href="${simStageHref(s.key)}" target="_blank">
+      <span class="sim-n">${String(s.n).padStart(2, "0")}</span>
+      <span class="sim-ico">${s.icon}</span>
+      <span class="sim-lbl">${esc(s.label)}</span>
+      <span class="sim-go">↗</span>
+    </a>`
+  ).join("");
+  $("#sim-maps").innerHTML = SIM_MAPS.map(
+    (m) => `<a class="sim-link sim-link-map" href="${simMapHref(m.id)}" target="_blank">
+      <span class="sim-ico">${m.icon}</span>
+      <span class="sim-lbl">${esc(m.label)}</span>
+      <span class="sim-go">↗</span>
+    </a>`
+  ).join("");
+}
+
+function bar(value, max, tone) {
+  const pct = Math.max(0, Math.min(100, (value / (max || 1)) * 100));
+  return `<div class="bar"><i class="bar-fill ${tone}" style="width:${pct.toFixed(1)}%"></i></div>`;
+}
+
+function pctTone(v, warn, crit) {
+  if (v == null) return "";
+  if (v >= crit) return "tone-danger";
+  if (v >= warn) return "tone-warn";
+  return "tone-ok";
+}
+
 async function refresh() {
   await loadMode();
-  const [incs, stats, secStats, secFindings] = await Promise.all([
+  const [incs, stats, secStats, secFindings, cluster, util, status] = await Promise.all([
     api("/api/incidents"),
     api("/api/evaluation/stats"),
     api("/api/security/stats").catch(() => null),
     api("/api/security/findings").catch(() => null),
+    api("/api/cluster").catch(() => null),
+    api("/api/utilization").catch(() => null),
+    api("/api/status").catch(() => null),
   ]);
   state.incidents = incs.incidents;
   const all = incs.incidents;
@@ -89,7 +179,6 @@ async function refresh() {
     .map(([ic, l, v, tone]) => `<div class="card ${tone}"><div class="ico">${ic}</div><div class="value">${v}</div><div class="label">${l}</div></div>`)
     .join("");
 
-  const filter = (n) => all.slice(0, n);
   $("#dashboard-incidents tbody").innerHTML = all.slice(0, 10)
     .map((i) => {
       const pd = i.policy_decision || {};
@@ -103,42 +192,74 @@ async function refresh() {
         <td>${new Date(i.detected_at).toLocaleString()}</td>
       </tr>`;
     }).join("");
-  renderDashSecurity(secStats, secFindings);
+
+  renderDashSecurity(secStats, secFindings, all);
+  renderDashUtilization(util, all);
+  renderDashOs(secFindings, all, cluster);
+  renderDashCluster(cluster);
   renderDashVerification(stats, all, verified, failed);
-  renderDashSecEvents(secFindings);
-  await renderCluster();
+  renderDashStack(status);
+  renderSimulatorLinks();
 }
 
-function renderDashSecurity(secStats, secFindings) {
+function renderDashSecurity(secStats, secFindings, incidents) {
   const target = $("#dash-security");
   if (!secStats) { target.innerHTML = `<p class="muted">security unavailable</p>`; return; }
   const s = secStats;
   const waiting = s.by_status && (s.by_status.AWAITING_APPROVAL || 0);
   const remediated = s.by_status && (s.by_status.REMEDIATED || 0);
+  const failed = s.by_status && (s.by_status.VERIFICATION_FAILED || 0);
+  const secIncidents = incidents.filter((i) => SEC_TYPES.has(i.incident_type)).length;
   const cards = [
     ["🛡", "Findings", s.total, "tone-violet"],
     ["⛔", "Critical", s.by_severity.critical || 0, "tone-danger"],
     ["⚠️", "High", s.by_severity.high || 0, "tone-warn"],
     ["✅", "Remediated", remediated, "tone-ok"],
     ["⏳", "Awaiting approval", waiting, "tone-warn"],
+    ["🧪", "Security incidents", secIncidents, "tone-violet"],
+    ["❌", "Verification failed", failed, failed ? "tone-danger" : "tone-ok"],
   ];
   target.innerHTML = cards.map(([ic, l, v, tone]) => `<div class="card ${tone}"><div class="ico">${ic}</div><div class="value">${v}</div><div class="label">${l}</div></div>`).join("");
+
+  const layers = (s.by_layer || {});
+  const layerTotal = Object.values(layers).reduce((a, b) => a + (b.total || 0), 0) || 1;
+  $("#dash-sec-layers").innerHTML = Object.entries(layers).map(([name, info]) => {
+    const tone = info.critical ? "tone-danger" : info.high ? "tone-warn" : "tone-ok";
+    return `<div class="bar-row">
+      <div class="bar-row-head">${layerTag(name)}<span class="muted">${info.total} finding${info.total === 1 ? "" : "s"}</span></div>
+      ${bar(info.total, layerTotal, tone)}
+      <div class="bar-row-foot muted">${info.critical || 0} critical · ${info.high || 0} high · ${info.remediated || 0} remediated</div>
+    </div>`;
+  }).join("") || `<p class="muted">no layers reported</p>`;
+
+  const counts = {};
+  for (const f of secFindings.findings || []) {
+    const d = f.domain || "unspecified";
+    counts[d] = (counts[d] || 0) + 1;
+  }
+  const domains = Object.entries(counts).sort((a, b) => b[1] - a[1]).slice(0, 10);
+  $("#dash-sec-domains").innerHTML = domains.length
+    ? domains.map(([d, n]) => `<div class="chip-row"><span class="chip-static">${esc(d)}</span><b>${n}</b></div>`).join("")
+    : `<p class="muted">no domains reported</p>`;
+
+  const openFindings = (secFindings.findings || []).filter(
+    (f) => !["REMEDIATED", "CLOSED"].includes(f.status)
+  );
+  $("#dash-sec-open").innerHTML = openFindings.length
+    ? openFindings.slice(0, 6).map((f) => findingEvent(f)).join("")
+    : `<p class="muted">no open findings</p>`;
+  renderDashSecEvents(secFindings);
 }
 
-function renderDashVerification(stats, all, verified, failed) {
-  const target = $("#dash-verification");
-  const auto = stats.autos || 0;
-  const approved = stats.approved || 0;
-  const rejected = stats.rejected || 0;
-  const cards = [
-    ["🤖", "Auto Remediations", auto, "tone-ok"],
-    ["👤", "Human Approved", approved, "tone-ok"],
-    ["🚫", "Rejected", rejected, "tone-danger"],
-    ["✅", "Incidents Verified (PASSED)", verified, "tone-ok"],
-    ["❌", "Verification Failed", failed, "tone-danger"],
-    ["⏳", "Open (awaiting / verification failed)", all.filter((i) => i.status === "AWAITING_APPROVAL" || i.status === "VERIFICATION_FAILED").length, "tone-warn"],
-  ];
-  target.innerHTML = cards.map(([ic, l, v, tone]) => `<div class="card ${tone}"><div class="ico">${ic}</div><div class="value">${v}</div><div class="label">${l}</div></div>`).join("");
+function findingEvent(f) {
+  return `<div class="sec-event ${esc(f.severity)}">
+    <div class="se-row">
+      ${layerTag(f.layer)} ${severityTag(f.severity)} ${statusTag(f.status)}
+      <span class="se-time">${new Date(f.detected_at).toLocaleString()}</span>
+    </div>
+    <div class="se-msg">${esc(f.title)}</div>
+    <div class="se-sub"><code>${esc(f.recommended_action || "-")}</code> · verify ${esc(f.verification_status)}</div>
+  </div>`;
 }
 
 function renderDashSecEvents(secFindings) {
@@ -147,7 +268,7 @@ function renderDashSecEvents(secFindings) {
   const list = (secFindings.findings || []).slice(0, 6);
   target.innerHTML = list.length
     ? list.map((f) => `
-      <div class="sec-event">
+      <div class="sec-event ${esc(f.severity)}">
         <div class="se-row">
           ${layerTag(f.layer)} ${severityTag(f.severity)} ${statusTag(f.status)} ${f.simulated ? `<span class="tag sim">SIM</span>` : ""}
           <span class="se-time">${new Date(f.detected_at).toLocaleString()}</span>
@@ -158,24 +279,165 @@ function renderDashSecEvents(secFindings) {
     : `<p class="muted">no security events</p>`;
 }
 
-async function renderCluster() {
-  try {
-    const c = await api("/api/cluster");
-    const single = c.nodes.length === 1;
-    $("#cluster-overview").innerHTML = `
-      <div class="cards">
-        <div class="card tone-ok"><div class="value">${c.nodes.length}</div><div class="label">Nodes${single ? " · single-node kind" : ""}</div></div>
-        <div class="card"><div class="value">${c.pod_count}</div><div class="label">Pods</div></div>
-        <div class="card tone-ok"><div class="value">${c.running_pods}</div><div class="label">Running</div></div>
-        <div class="card ${c.failed_pods ? "tone-danger" : "tone-ok"}"><div class="value">${c.failed_pods}</div><div class="label">Not healthy</div></div>
-      </div>
-      <div style="margin:12px 0 14px;font-size:12px;color:var(--muted);border:1px dashed var(--border);border-radius:10px;padding:9px 12px;line-height:1.6">
-        🧊 <b style="color:#fde68a">kind cluster “ai-observability-local”</b> runs as a single node (
-        <code style="color:var(--accent)">kubernetes/kind/kind-cluster.yaml</code> — one control-plane, no workers) so the whole demo fits on a laptop. Add worker lines to that file to make it multi-node.
-      </div>
-      <table class="table"><thead><tr><th>Deployment</th><th>Replicas</th><th>Ready</th><th>Mode</th></tr></thead>
-      <tbody>${c.deployments.map((d) => `<tr><td>${esc(d.name)}</td><td>${d.replicas}</td><td>${d.ready}/${d.available}</td><td>${esc(c.mode)}</td></tr>`).join("")}</tbody></table>`;
-  } catch (err) { $("#cluster-overview").innerHTML = `<p class="muted">${esc(err.message)}</p>`; }
+function renderDashUtilization(util, incidents) {
+  const utilIncidents = incidents.filter((i) => UTIL_TYPES.has(i.incident_type));
+  const cpuN = utilIncidents.filter((i) => i.incident_type === "high_cpu").length;
+  const memN = utilIncidents.filter((i) => i.incident_type !== "high_cpu").length;
+  const scaled = incidents.filter((i) => (i.policy_decision || {}).action === "scale_deployment").length;
+  const cpuAvg = util ? util.cpu_percent_avg : null;
+  const memAvg = util ? util.memory_percent_avg : null;
+
+  const cards = [
+    ["🔥", "CPU pressure", cpuAvg == null ? "—" : `${cpuAvg}%`, pctTone(cpuAvg, 70, 85)],
+    ["🧠", "Memory pressure", memAvg == null ? "—" : `${memAvg}%`, pctTone(memAvg, 70, 85)],
+    ["⏱", "CPU incidents", cpuN, cpuN ? "tone-warn" : "tone-ok"],
+    ["💥", "Memory / OOM incidents", memN, memN ? "tone-danger" : "tone-ok"],
+    ["📈", "Auto-scaled", scaled, scaled ? "tone-ok" : ""],
+    ["🎯", "CPU above threshold", util ? util.cpu_pressure : 0, util && util.cpu_pressure ? "tone-warn" : "tone-ok"],
+    ["🧯", "Memory above threshold", util ? util.memory_pressure : 0, util && util.memory_pressure ? "tone-warn" : "tone-ok"],
+  ];
+  $("#dash-utilization").innerHTML = cards
+    .map(([ic, l, v, tone]) => `<div class="card ${tone}"><div class="ico">${ic}</div><div class="value">${v}</div><div class="label">${l}</div></div>`)
+    .join("");
+
+  const items = (util && util.items) || [];
+  $("#dash-util-bars").innerHTML = items.length
+    ? items.map((it) => `
+      <div class="bar-row">
+        <div class="bar-row-head"><b>${esc(it.deployment)}</b><span class="muted">cpu ${fmtPct(it.cpu_percent)} · mem ${fmtPct(it.memory_percent)}</span></div>
+        ${bar(it.cpu_percent || 0, 100, pctTone(it.cpu_percent, 70, 85))}
+        ${bar(it.memory_percent || 0, 100, pctTone(it.memory_percent, 70, 85))}
+      </div>`).join("") +
+      `<p class="muted" style="margin-top:8px">metrics: ${util.source} · ${esc(util.namespace)}</p>`
+    : `<p class="muted">utilization metrics unavailable</p>`;
+
+  $("#dash-util-workloads").innerHTML = items.length
+    ? items.map((it) => {
+      const converged = it.replicas === it.available;
+      return `<div class="sec-event ${converged ? "" : "high"}">
+        <div class="se-row"><b>${esc(it.deployment)}</b>
+          <span class="tag ${converged ? "low" : "high"}">${it.ready}/${it.available} ready</span>
+          <span class="se-time">${it.replicas} replica${it.replicas === 1 ? "" : "s"}</span>
+        </div>
+        <div class="se-sub">cpu ${fmtPct(it.cpu_percent)} · memory ${fmtPct(it.memory_percent)}</div>
+      </div>`;
+    }).join("")
+    : `<p class="muted">no workloads reported</p>`;
+}
+
+function fmtPct(v) {
+  return v == null ? "—" : `${v}%`;
+}
+
+function renderDashOs(secFindings, incidents, cluster) {
+  const findings = ((secFindings && secFindings.findings) || []).filter((f) => f.layer === "node_cloud");
+  const certIncidents = incidents.filter((i) => i.incident_type === "certificate_expiry");
+  const certRemediated = certIncidents.filter((i) => i.verification_status === "PASSED").length;
+  const nodes = (cluster && cluster.nodes) || [];
+  const hardened = findings.filter((f) => ["REMEDIATED", "CLOSED"].includes(f.status)).length;
+
+  const cards = [
+    ["🖥", "Nodes", nodes.length, nodes.length ? "tone-ok" : "tone-warn"],
+    ["🛡", "Node / OS findings", findings.length, findings.length ? "tone-warn" : "tone-ok"],
+    ["✅", "Hardened", hardened, "tone-ok"],
+    ["🔐", "Cert expiries", certIncidents.length, certIncidents.length ? "tone-warn" : "tone-ok"],
+    ["📜", "Certs renewed", certRemediated, "tone-ok"],
+    ["🐧", "Kubelet hardening", findings.filter((f) => f.domain === "Kubelet").length, ""],
+    ["⏳", "Awaiting approval", findings.filter((f) => f.status === "AWAITING_APPROVAL").length, "tone-warn"],
+  ];
+  $("#dash-os").innerHTML = cards
+    .map(([ic, l, v, tone]) => `<div class="card ${tone}"><div class="ico">${ic}</div><div class="value">${v}</div><div class="label">${l}</div></div>`)
+    .join("");
+
+  $("#dash-os-nodes").innerHTML = nodes.length
+    ? nodes.map((n) => `<div class="sec-event ${n.status === "Ready" ? "" : "high"}">
+        <div class="se-row"><b>${esc(n.name)}</b>
+          <span class="tag ${n.status === "Ready" ? "low" : "high"}">${esc(n.status)}</span>
+          <span class="se-time">${esc(n.role || "worker")}</span>
+        </div>
+      </div>`).join("")
+    : `<p class="muted">no nodes reported</p>`;
+
+  $("#dash-os-findings").innerHTML = findings.length
+    ? findings.slice(0, 6).map((f) => findingEvent(f)).join("")
+    : `<p class="muted">no node/OS findings</p>`;
+}
+
+function renderDashCluster(cluster) {
+  const target = $("#dash-cluster-cards");
+  if (!cluster || cluster.error) {
+    target.innerHTML = `<p class="muted">cluster unavailable</p>`;
+    $("#cluster-overview").innerHTML = `<p class="muted">${esc((cluster && cluster.error) || "unavailable")}</p>`;
+    return;
+  }
+  const single = cluster.nodes.length === 1;
+  const desired = cluster.deployments.reduce((a, d) => a + (d.replicas || 0), 0);
+  const available = cluster.deployments.reduce((a, d) => a + (d.available || 0), 0);
+  const restarts = (cluster.pods || []).reduce((a, p) => a + (p.restarts || 0), 0);
+  const cards = [
+    ["🧊", "Nodes", cluster.nodes.length, "tone-ok"],
+    ["📦", "Pods", cluster.pod_count, ""],
+    ["▶️", "Running", cluster.running_pods, "tone-ok"],
+    ["❗", "Not healthy", cluster.failed_pods, cluster.failed_pods ? "tone-danger" : "tone-ok"],
+    ["🎚", "Replicas ready", `${available}/${desired}`, available === desired ? "tone-ok" : "tone-warn"],
+    ["🔁", "Container restarts", restarts, restarts ? "tone-warn" : "tone-ok"],
+    ["🛰", "Mode", cluster.mode, "tone-violet"],
+  ];
+  target.innerHTML = cards
+    .map(([ic, l, v, tone]) => `<div class="card ${tone}"><div class="ico">${ic}</div><div class="value">${v}</div><div class="label">${l}</div></div>`)
+    .join("");
+
+  $("#cluster-overview").innerHTML = `
+    <div style="overflow-x:auto"><table class="table"><thead><tr><th>Deployment</th><th>Replicas</th><th>Ready</th><th>Available</th><th>Image</th></tr></thead>
+      <tbody>${cluster.deployments.map((d) => `<tr>
+        <td>${esc(d.name)}</td>
+        <td>${d.replicas}</td>
+        <td>${d.ready}</td>
+        <td>${d.available}</td>
+        <td class="muted">${esc(d.image || "-")}</td>
+      </tr>`).join("")}</tbody></table></div>
+    <div class="note-block">
+      🧊 <b>kind cluster “ai-observability-local”</b> runs as a single node
+      (<code>kubernetes/kind/kind-cluster.yaml</code>${single ? " — one control-plane, no workers" : ` — ${cluster.nodes.length} nodes`}).
+      Add worker lines to that file to make it multi-node.
+    </div>`;
+}
+
+function renderDashVerification(stats, all, verified, failed) {
+  const target = $("#dash-verification");
+  const auto = stats.autos || 0;
+  const approved = stats.approved || 0;
+  const rejected = stats.rejected || 0;
+  const cards = [
+    ["🤖", "Auto Remediations", auto, "tone-ok"],
+    ["👤", "Human Approved", approved, "tone-ok"],
+    ["🚫", "Rejected", rejected, rejected ? "tone-danger" : ""],
+    ["✅", "Incidents Verified (PASSED)", verified, "tone-ok"],
+    ["❌", "Verification Failed", failed, failed ? "tone-danger" : "tone-ok"],
+    ["⏳", "Open (awaiting / failed)", all.filter((i) => i.status === "AWAITING_APPROVAL" || i.status === "VERIFICATION_FAILED").length, "tone-warn"],
+  ];
+  target.innerHTML = cards.map(([ic, l, v, tone]) => `<div class="card ${tone}"><div class="ico">${ic}</div><div class="value">${v}</div><div class="label">${l}</div></div>`).join("");
+}
+
+function renderDashStack(status) {
+  const target = $("#dash-stack");
+  const comps = (status && status.components) || {};
+  target.innerHTML = Object.entries(comps).map(([name, c]) => {
+    const up = c.available;
+    const dot = c.configured ? (up ? "" : " off") : " warn";
+    const link = STACK_LINKS[name];
+    const label = link
+      ? `<a href="${link}" target="_blank" rel="noopener">${esc(name)} ↗</a>`
+      : esc(name);
+    const detail = [
+      c.configured ? "configured" : "not configured",
+      c.available ? "available" : "unavailable",
+      c.mode ? c.mode : "",
+      c.provider ? c.provider : "",
+    ].filter(Boolean).join(" · ");
+    return `<div class="status-comp"><span class="dot${dot}"></span>
+      <div><b>${label}</b><br/><span class="muted">${esc(detail)}</span></div></div>`;
+  }).join("") || `<p class="muted">status unavailable</p>`;
 }
 
 // ---------- incidents ----------

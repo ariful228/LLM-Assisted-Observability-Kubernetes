@@ -32,7 +32,7 @@ data:
           - action: labelmap
             regex: __meta_kubernetes_pod_label_(.+)
       - job_name: platform-app
-        static_configs: [ { targets: ["platform:8000"] } ]
+        static_configs: [ { targets: ["platform:8199"] } ]
   rules.yml: |
     groups:
       - name: ai-observability.rules

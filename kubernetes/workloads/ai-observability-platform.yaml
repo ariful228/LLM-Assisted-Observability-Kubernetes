@@ -13,14 +13,14 @@ spec:
       labels:
         app: ai-platform
         prometheus.io/scrape: "true"
-        prometheus.io/port: "8000"
+        prometheus.io/port: "8199"
     spec:
       serviceAccountName: platform
       containers:
         - name: api
           image: ai-observability-platform:latest
           imagePullPolicy: IfNotPresent
-          ports: [{ containerPort: 8000 }]
+          ports: [{ containerPort: 8199 }]
           env:
             - name: EXTERNAL_MODE
               value: "live"
@@ -35,11 +35,11 @@ spec:
             - name: LLM_PROVIDER
               value: "mock"
           livenessProbe:
-            httpGet: { path: /health, port: 8000 }
+            httpGet: { path: /health, port: 8199 }
             initialDelaySeconds: 10
             periodSeconds: 15
           readinessProbe:
-            httpGet: { path: /health, port: 8000 }
+            httpGet: { path: /health, port: 8199 }
             initialDelaySeconds: 5
             periodSeconds: 10
           resources:
@@ -58,5 +58,5 @@ spec:
   selector: { app: ai-platform }
   ports:
     - name: http
-      port: 8000
-      targetPort: 8000
+      port: 8199
+      targetPort: 8199

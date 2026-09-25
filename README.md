@@ -46,15 +46,15 @@ LANGRAPH WORKFLOW (investigation graph)
 ```bash
 python3 -m venv .venv && .venv/bin/pip install -r requirements.txt
 cp .env.example .env            # optional; defaults are fine
-.venv/bin/python -m uvicorn backend.main:app --reload --port 8000
+.venv/bin/python -m uvicorn backend.main:app --reload --port 8199
 ```
 
-Open http://localhost:8000 — the web UI shows a redesigned dashboard
-(cluster health, security posture, AI investigations, auto vs. human
-remediation, verification status, recent security events), incident list,
-approval panels, MCP tools, live RAG search, an **Application Logs** view backed
-by the `kubernetes-logs` OpenSearch index, and an animated **Workflow Sim** view
-that replays any incident through the LangGraph pipeline.
+Open http://localhost:8199 — the web UI dashboard is organised by category
+(**Security · Utilization · OS & Node · Cluster & Workloads · AI Pipeline ·
+Observability Stack**), with deep links into the Pipeline Simulator, plus an
+incident list, approval panels, MCP tools, live RAG search, an **Application
+Logs** view backed by the `kubernetes-logs` OpenSearch index, and an animated
+**Workflow Sim** view that replays any incident through the LangGraph pipeline.
 
 The **Application Logs** tab streams structured container logs
 (`GET /api/logs`) and facet values (`GET /api/logs/facets`) with namespace /
@@ -68,7 +68,7 @@ state (crash-demo ERROR lines disappear once it is restarted, etc.).
 ```bash
 ./scripts/run_demo.sh                          # venv + deps + .env + serve
 ./scripts/run_demo.sh --drive-demo             # also run detect + approve-all
-./scripts/run_demo.sh --skip-install --no-reset --port 9000
+./scripts/run_demo.sh --skip-install --no-reset --port 8199
 ```
 
 ### Drive the demo from the CLI
@@ -98,7 +98,7 @@ manages it all; every port binds to `127.0.0.1`.
 
 | Service | URL | Notes |
 |---------|-----|-------|
-| Platform | http://localhost:8000 | FastAPI + web UI at `/` |
+| Platform | http://localhost:8199 | FastAPI + web UI at `/` |
 | Prometheus | http://localhost:9090 | alert rules for the 7 scenarios |
 | Grafana | http://localhost:3001 | `admin / admin`, dashboard provisioned |
 | OpenSearch | http://localhost:9200 | logs/audit/falco + RAG BM25 index |
@@ -206,7 +206,7 @@ the supporting stack.
   touching the workflow.
 - Mock LLM (`LLM_PROVIDER=mock`) is deterministic and evidence-driven; use
   `openai` / `ollama` providers via LangChain with automatic fallback to mock.
-- The security posture (CKS-oriented) seed covers all four layers — application
+- The security posture seed covers all four layers — application
   (config drift), container (privileged, apparmor, seccomp, SCA/CVE image,
   secrets-in-env, capabilities, image pull policy), node/cloud (kubelet
   hardening on both control-plane and workers) and cluster (netpol, RBAC,

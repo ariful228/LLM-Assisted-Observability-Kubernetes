@@ -51,6 +51,7 @@ const WorkflowSim = (() => {
     timer: null,
     speed: 450,
     fetched: null, // {incident, nodes, steps}
+    token: null,   // the moving token, re-appended after every track re-render
   };
 
   const $ = (s) => document.querySelector(s);
@@ -70,8 +71,8 @@ const WorkflowSim = (() => {
     $("#wf-reset").addEventListener("click", reset);
     $("#wf-incident").addEventListener("change", () => { loadData($("#wf-incident").value); });
     $("#wf-speed").addEventListener("change", () => { state.speed = Number($("#wf-speed").value); });
-    const track = $("#wf-track");
-    track.appendChild($("#wf-token"));
+    state.token = $("#wf-token");
+    $("#wf-track").appendChild(state.token);
   }
 
   async function refresh() {
@@ -103,7 +104,7 @@ const WorkflowSim = (() => {
 
   async function loadData(incidentId) {
     state.playing = false;
-    $("#wf-token").classList.add("hidden");
+    if (state.token) state.token.classList.add("hidden");
     if (!incidentId || incidentId === "__demo__") {
       state.fetched = { incident: null, nodes: DEMO_STEPS.map((s) => s.node), steps: DEMO_STEPS };
     } else {
@@ -138,6 +139,8 @@ const WorkflowSim = (() => {
       track.appendChild(n);
       if (i < nodes.length - 1) track.appendChild(el("div", "wf-arrow"));
     });
+    // the token lives inside the track, so re-attach it after the re-render
+    if (state.token) track.appendChild(state.token);
   }
 
   function renderSummary(incident) {
@@ -208,7 +211,8 @@ const WorkflowSim = (() => {
 
   function moveTokenTo(nodeEl) {
     const track = $("#wf-track");
-    const token = $("#wf-token");
+    const token = state.token;
+    if (!track || !token || !nodeEl) return;
     const tr = track.getBoundingClientRect();
     const nr = nodeEl.getBoundingClientRect();
     const cx = nr.left + nr.width / 2 - tr.left;

@@ -9,7 +9,7 @@ receivers:
   - name: team-ai-platform
     webhook_configs:
       # The platform exposes /api/incidents/ingest to turn validated alerts into incidents.
-      - url: http://platform:8000/api/incidents/ingest
+      - url: http://platform:8199/api/incidents/ingest
         send_resolved: true
 inhibit_rules:
   - source_matchers: [severity="critical"]

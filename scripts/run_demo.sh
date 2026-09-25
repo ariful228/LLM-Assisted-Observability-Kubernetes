@@ -4,7 +4,7 @@
 #
 # Creates the venv, installs dependencies, prepares .env, (optionally) resets
 # the simulated cluster and drives the six scenarios, then starts the FastAPI
-# web server so you can open http://localhost:8000.
+# web server so you can open http://localhost:8199.
 #
 # Everything can be hosted locally. Use --stack/--kube/--seed (each delegates to
 # scripts/run_stack.sh) to bring up the observability stack (Prometheus, Grafana,
@@ -27,7 +27,7 @@ PYTHON_BIN="${PYTHON_BIN:-python3}"
 VENV="$ROOT/.venv"
 PY="$VENV/bin/python"
 PIP="$VENV/bin/pip"
-PORT="${PORT:-8000}"
+PORT="${PORT:-8199}"
 
 RUN_STACK="$ROOT/scripts/run_stack.sh"
 DO_RESET=1
@@ -43,7 +43,7 @@ run_demo.sh — bootstrap and run the whole LLM-Assisted Observability demo.
 
 Creates the .venv, installs dependencies, prepares .env, (optionally) resets
 the simulated cluster and drives the six scenarios, then starts the FastAPI
-web server so you can open http://localhost:8000.
+    web server so you can open http://localhost:8199.
 
 You can run everything locally (case-aiops style) with --stack --kube --seed:
   * --stack  docker compose: Prometheus, Grafana, OpenSearch + pgvector RAG DB
@@ -63,7 +63,7 @@ Options:
   --stack           bring up local observability stack via docker compose
   --kube            create local kind cluster + apply k8s manifests
   --seed            re-seed RAG databases and OpenSearch demo datasets
-  --port PORT       uvicorn port (default 8000)
+  --port PORT       uvicorn port (default 8199)
   --help, -h        show this help
 EOF
 }

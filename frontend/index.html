@@ -35,7 +35,7 @@
       <div class="dash-hero">
         <div class="dash-hero-text">
           <h1>Kubernetes Observability &amp; Security</h1>
-          <p>LLM <b>proposes</b> · policy engine <b>decides</b> · humans <b>approve</b> · MCP <b>executes &amp; verifies</b> — every path is traced and everything runs locally on <code>127.0.0.1</code>.</p>
+          <p>LLM <b>proposes</b> · policy engine <b>decides</b> · humans <b>approve</b> · MCP <b>executes &amp; verifies</b> — every path is traced and everything runs locally on <code>127.0.0.1:8199</code>.</p>
         </div>
         <div class="hero-chips">
           <span class="chip">🧊 single-node kind cluster</span>
@@ -44,38 +44,176 @@
           <span class="chip">🔭 langfuse self-hosted</span>
         </div>
       </div>
-      <div class="dash-section">
-        <div class="sec-event-head"><h3 style="margin:0">Active Incidents · Approvals · AI Investigations</h3></div>
+
+      <nav class="cat-nav" id="cat-nav">
+        <a href="#cat-overview"><span>🧭</span>Overview</a>
+        <a href="#cat-security"><span>🛡</span>Security</a>
+        <a href="#cat-utilization"><span>📈</span>Utilization</a>
+        <a href="#cat-os"><span>🖥</span>OS &amp; Node</a>
+        <a href="#cat-cluster"><span>🧊</span>Cluster</a>
+        <a href="#cat-pipeline"><span>🤖</span>AI Pipeline</a>
+        <a href="#cat-stack"><span>🔭</span>Stack</a>
+        <a href="#cat-sim"><span>🎬</span>Simulator</a>
+      </nav>
+
+      <div class="cat-block" id="cat-overview">
+        <div class="cat-head">
+          <span class="cat-ico">🧭</span>
+          <div class="cat-title">
+            <h2>Overview</h2>
+            <p class="muted">Incident pipeline at a glance — everything the platform has detected, decided, executed and verified.</p>
+          </div>
+        </div>
         <div class="cards" id="dashboard-cards"></div>
       </div>
-      <div class="dash-grid">
-        <div class="dash-col">
-          <h3><span class="ico">🧊</span> Cluster Health <span class="mini-chip" title="kind cluster · ai-observability-local">single node</span></h3>
-          <div id="cluster-overview"></div>
+
+      <div class="cat-block" id="cat-security">
+        <div class="cat-head">
+          <span class="cat-ico">🛡</span>
+          <div class="cat-title">
+            <h2>Security</h2>
+            <p class="muted">Findings across the four layers of the cluster — application, container, node/OS and Kubernetes control plane.</p>
+          </div>
+          <div class="cat-links">
+            <button class="small" onclick="showView('security')">All findings</button>
+          </div>
         </div>
-        <div class="dash-col">
-          <h3><span class="ico">🛡</span> Security Posture</h3>
-          <div id="dash-security" class="cards dash-cards"></div>
+        <div class="cards dash-cards" id="dash-security"></div>
+        <div class="dash-grid">
+          <div class="dash-col">
+            <h3>Findings by layer</h3>
+            <div id="dash-sec-layers" class="layer-bars"></div>
+          </div>
+          <div class="dash-col">
+            <h3>Recent security events</h3>
+            <div id="dash-sec-events" class="sec-events"></div>
+          </div>
+        </div>
+        <div class="dash-grid">
+          <div class="dash-col">
+            <h3>Top security domains</h3>
+            <div id="dash-sec-domains" class="chip-rows"></div>
+          </div>
+          <div class="dash-col">
+            <h3>Open findings</h3>
+            <div id="dash-sec-open" class="sec-events"></div>
+          </div>
         </div>
       </div>
-      <div class="dash-grid">
-        <div class="dash-col">
-          <h3><span class="ico">✅</span> Remediation &amp; Verification</h3>
-          <div id="dash-verification" class="cards dash-cards"></div>
+
+      <div class="cat-block" id="cat-utilization">
+        <div class="cat-head">
+          <span class="cat-ico">📈</span>
+          <div class="cat-title">
+            <h2>Utilization</h2>
+            <p class="muted">Compute pressure, memory pressure and workload scaling — CPU throttling, OOM kills and replica convergence.</p>
+          </div>
+          <div class="cat-links">
+            <button class="small" onclick="showView('incidents')">Incidents</button>
+          </div>
         </div>
-        <div class="dash-col">
-          <h3><span class="ico">📡</span> Recent Security Events</h3>
-          <div id="dash-sec-events" class="sec-events"></div>
+        <div class="cards dash-cards" id="dash-utilization"></div>
+        <div class="dash-grid">
+          <div class="dash-col">
+            <h3>Resource pressure</h3>
+            <div id="dash-util-bars" class="layer-bars"></div>
+          </div>
+          <div class="dash-col">
+            <h3>Workload replicas</h3>
+            <div id="dash-util-workloads" class="sec-events"></div>
+          </div>
         </div>
       </div>
-      <div class="dash-section">
-        <h3 style="margin-top:0">Recent Incidents</h3>
-        <div style="overflow-x:auto">
-          <table class="table" id="dashboard-incidents">
-            <thead><tr><th>ID</th><th>Type</th><th>Severity</th><th>Status</th><th>Action</th><th>Verify</th><th>Time</th></tr></thead>
-            <tbody></tbody>
-          </table>
+
+      <div class="cat-block" id="cat-os">
+        <div class="cat-head">
+          <span class="cat-ico">🖥</span>
+          <div class="cat-title">
+            <h2>OS &amp; Node</h2>
+            <p class="muted">Node and operating-system level posture — kubelet hardening, kernel defaults, image and runtime policy on the hosts.</p>
+          </div>
         </div>
+        <div class="cards dash-cards" id="dash-os"></div>
+        <div class="dash-grid">
+          <div class="dash-col">
+            <h3>Node inventory</h3>
+            <div id="dash-os-nodes" class="sec-events"></div>
+          </div>
+          <div class="dash-col">
+            <h3>Node &amp; OS findings</h3>
+            <div id="dash-os-findings" class="sec-events"></div>
+          </div>
+        </div>
+      </div>
+
+      <div class="cat-block" id="cat-cluster">
+        <div class="cat-head">
+          <span class="cat-ico">🧊</span>
+          <div class="cat-title">
+            <h2>Cluster &amp; Workloads</h2>
+            <p class="muted">Local kind cluster <code>ai-observability-local</code> — nodes, deployments, pod health and certificate lifecycle.</p>
+          </div>
+          <div class="cat-links">
+            <button class="small" onclick="showView('logs')">Application logs</button>
+          </div>
+        </div>
+        <div class="cards dash-cards" id="dash-cluster-cards"></div>
+        <div id="cluster-overview"></div>
+      </div>
+
+      <div class="cat-block" id="cat-pipeline">
+        <div class="cat-head">
+          <span class="cat-ico">🤖</span>
+          <div class="cat-title">
+            <h2>AI Pipeline &amp; Remediation</h2>
+            <p class="muted">LLM diagnosis, policy decisions, human approvals and MCP verification — with the raw evidence never hidden behind the summary.</p>
+          </div>
+          <div class="cat-links">
+            <button class="small" onclick="showView('workflow')">Workflow sim</button>
+            <button class="small" onclick="showView('approvals')">Approvals</button>
+          </div>
+        </div>
+        <div class="cards dash-cards" id="dash-verification"></div>
+        <div class="dash-section">
+          <h3 style="margin-top:0">Recent incidents</h3>
+          <div style="overflow-x:auto">
+            <table class="table" id="dashboard-incidents">
+              <thead><tr><th>ID</th><th>Type</th><th>Severity</th><th>Status</th><th>Action</th><th>Verify</th><th>Time</th></tr></thead>
+              <tbody></tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+
+      <div class="cat-block" id="cat-stack">
+        <div class="cat-head">
+          <span class="cat-ico">🔭</span>
+          <div class="cat-title">
+            <h2>Observability Stack</h2>
+            <p class="muted">Every local component, its reachability and where to open it.</p>
+          </div>
+          <div class="cat-links">
+            <button class="small" onclick="showView('status')">System detail</button>
+          </div>
+        </div>
+        <div class="status-grid" id="dash-stack"></div>
+      </div>
+
+      <div class="cat-block" id="cat-sim">
+        <div class="cat-head">
+          <span class="cat-ico">🎬</span>
+          <div class="cat-title">
+            <h2>Pipeline Simulator</h2>
+            <p class="muted">Open the animated simulator straight at the stage or map you care about.</p>
+          </div>
+          <div class="cat-links">
+            <a class="small" id="sim-open-all" href="/static/simulator.html" target="_blank">Open simulator ↗</a>
+          </div>
+        </div>
+        <h3>Pipeline stages</h3>
+        <div class="sim-links" id="sim-stages"></div>
+        <h3>Architecture maps</h3>
+        <div class="sim-links sim-links-maps" id="sim-maps"></div>
       </div>
     </section>
 
@@ -125,8 +263,8 @@
     </section>
 
     <section id="view-security" class="view">
-      <h2>Security Findings — CKS 4-Layer Coverage</h2>
-      <p class="muted">Simulated findings across <b>Application · Container · Node-Cloud · Kubernetes-Cluster</b>. Every finding shows the full structure — Issue, Severity, Evidence, Affected Resource, Root Cause, Recommended Solution, Auto/Approval, Remediation &amp; Verification status — and is labelled <span class="tag sim">SIMULATED</span>. The LLM only proposes diagnosis; the policy engine decides.</p>
+      <h2>Security Findings — 4-Layer Coverage</h2>
+      <p class="muted">Simulated findings across <b>Application · Container · Node/Cloud · Kubernetes Cluster</b>. Every finding shows the full structure — Issue, Severity, Evidence, Affected Resource, Root Cause, Recommended Solution, Auto/Approval, Remediation &amp; Verification status — and is labelled <span class="tag sim">SIMULATED</span>. The LLM only proposes diagnosis; the policy engine decides.</p>
       <div class="cards" id="sec-cards"></div>
       <div class="filters">
         <select id="sec-layer">

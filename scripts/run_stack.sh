@@ -28,7 +28,7 @@ cd "$ROOT"
 export PATH="$ROOT/tools/bin:$PATH"
 
 PY="${PYTHON_BIN:-$ROOT/.venv/bin/python}"
-PORT="${PORT:-8000}"
+PORT="${PORT:-8199}"
 COMPOSE="docker compose -f docker/docker-compose.yml"
 LANGFUSE="docker compose -f docker/langfuse-compose.yml"
 
@@ -156,12 +156,22 @@ kube_up() {
   fi
   info "applying kubernetes manifests"
   kubectl apply -f kubernetes/namespace/namespace.yaml
-  kubectl apply -f kubernetes/rbac/rbac.yaml
-  kubectl apply -f kubernetes/workloads/demo-applications.yaml
-  kubectl apply -f kubernetes/test-scenarios/scenario-manifests.yaml
-  kubectl apply -f kubernetes/aggregation-layer/aggregator.yaml
-  kubectl apply -f kubernetes/monitoring/prometheus-grafana.yaml
-  kubectl apply -f kubernetes/monitoring/falco-and-grafana-configmaps.yaml
+  for _ in $(seq 1 30); do
+    kubectl -n ai-observability-demo get serviceaccount default >/dev/null 2>&1 && break
+    sleep 1
+  done
+  kubectl -n ai-observability-demo get serviceaccount default >/dev/null 2>&1 \
+    || die "default ServiceAccount missing in ai-observability-demo"
+  apply_failed=0
+  for manifest in \
+    kubernetes/rbac/rbac.yaml \
+    kubernetes/workloads/demo-applications.yaml \
+    kubernetes/test-scenarios/scenario-manifests.yaml \
+    kubernetes/monitoring/falco-and-grafana-configmaps.yaml \
+    kubernetes/aggregation-layer/aggregator.yaml \
+    kubernetes/monitoring/prometheus-grafana.yaml; do
+    kubectl apply -f "$manifest" || { warn "FAILED to apply $manifest"; apply_failed=1; }
+  done
   # container-usable kubeconfig (points at the host-forwarder on 6443 so the
   # ai-obsv-platform container can reach this cluster as "live")
   mkdir -p "$ROOT/tools/bin/kubeconfig"
@@ -179,6 +189,7 @@ print("kubeconfig rewritten -> https://host.docker.internal:6443 (skip-tls-verif
 PY
   start_host_forward
   kubectl get pods -A | sed 's/^/  /'
+  (( apply_failed == 0 )) || die "some manifests failed to apply — cluster is incomplete"
   ok "cluster ready — kubectl get ns ai-observability-demo"
 }
 

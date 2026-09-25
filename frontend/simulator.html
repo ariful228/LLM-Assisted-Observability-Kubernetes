@@ -349,7 +349,7 @@ footer code{font-family:var(--mono);color:#7dd3fc}
         <!-- compose -->
         <g class="node-g"><rect x="330" y="52" rx="16" width="308" height="84" class="lg-node" stroke="#34d399"/>
           <text x="484" y="78" text-anchor="middle" font-size="12.5" font-weight="800" fill="#6ee7b7">docker/docker-compose.yml</text>
-          <text x="484" y="98" text-anchor="middle" font-size="9.5" fill="#94a3b8" class="mono">platform :8000 · prometheus :9090 · grafana :3001</text>
+          <text x="484" y="98" text-anchor="middle" font-size="9.5" fill="#94a3b8" class="mono">platform :8199 · prometheus :9090 · grafana :3001</text>
           <text x="484" y="114" text-anchor="middle" font-size="9.5" fill="#94a3b8" class="mono">opensearch :9200 · pgvector :5434</text>
           <text x="484" y="128" text-anchor="middle" font-size="9" fill="#6ee7b7" class="mono">healthchecks · volume-mounted provisioning</text></g>
 
@@ -387,7 +387,7 @@ footer code{font-family:var(--mono);color:#7dd3fc}
         <!-- port strip -->
         <text x="875" y="150" text-anchor="middle" font-size="11" font-weight="800" fill="#cbd5e1">all bound to 127.0.0.1</text>
         <g><rect x="700" y="160" rx="9" width="340" height="132" fill="rgba(255,255,255,.02)" stroke="rgba(148,163,184,.22)"/>
-          <text x="716" y="184" font-size="10" fill="#7dd3fc" class="mono">:8000  platform (fastapi)</text>
+          <text x="716" y="184" font-size="10" fill="#7dd3fc" class="mono">:8199  platform (fastapi)</text>
           <text x="716" y="204" font-size="10" fill="#a7f3d0" class="mono">:3001  grafana admin/admin</text>
           <text x="716" y="224" font-size="10" fill="#fde68a" class="mono">:9090  prometheus</text>
           <text x="716" y="244" font-size="10" fill="#fdba74" class="mono">:9200  opensearch</text>
@@ -777,8 +777,8 @@ footer code{font-family:var(--mono);color:#7dd3fc}
     <div>
       <h4>⚡ cheat sheet — commands you actually use</h4>
       <p><code>bash scripts/run_stack.sh all</code> brings the whole stack up ·
-      <code>bash scripts/seed.sh</code> seeds RAG + opensearch · <code>bash scripts/scan.sh</code> runs the CKS audit ·
-      <code>kubectl -n observability get pods</code> shows live state · <code>curl :8000/health</code> probes the platform ·
+      <code>bash scripts/seed.sh</code> seeds RAG + opensearch · <code>bash scripts/scan.sh</code> runs the security audit ·
+      <code>kubectl -n observability get pods</code> shows live state · <code>curl :8199/health</code> probes the platform ·
       <code>curl :3001</code> opens Grafana · <code>curl :9200</code> talks to OpenSearch.</p>
     </div>
     <div>
@@ -892,7 +892,7 @@ const STAGES = [
       {t:'incident',d:'stored → data/incidents.json → graph'}
     ],
     logs:[
-      ['cmd','$ curl -X POST http://127.0.0.1:8000/api/incidents/detect ...'],
+      ['cmd','$ curl -X POST http://127.0.0.1:8199/api/incidents/detect ...'],
       ['net','alert high_cpu sustained 5m on cpu-demo (Grafana rule)'],
       ['info','incident INC-… type=high_cpu severity=high namespace=ai-observability-demo'],
       ['ok','incident persisted → data/incidents.json'],
@@ -1191,6 +1191,34 @@ document.querySelectorAll('#speedSeg button').forEach(b=>{
 buildRail();markRail(0,'active');showStage(0);
 log('info','LLM-Assisted Observability for Kubernetes simulator ready — mirrors the repo: stack up → kind cluster → RAG seed → detect → LangGraph investigate → fused RAG → diagnose/risk → policy → approval → MCP execute + verify → finalize + trace');
 log('info','press ▶ Run pipeline, click a stage in the rail, or scroll for the local-stack / LangGraph / RAG / policy / MCP / scenario maps');
+
+/* ================= DEEP LINKS =================
+   #stage=<key>  -> jump straight to a pipeline stage (e.g. #stage=policy)
+   #<section id> -> jump straight to one of the architecture maps (e.g. #gates)   */
+function applyHash(){
+  const raw=decodeURIComponent(location.hash.replace(/^#/,''));
+  if(!raw)return;
+  if(raw.startsWith('stage=')){
+    const key=raw.slice(6);
+    const i=STAGES.findIndex(s=>s.key===key);
+    if(i>-1){
+      if(playing)pause();
+      gen++;markRail(i,'active');showStage(i);
+      const node=$('rail-'+i);
+      if(node)node.scrollIntoView({behavior:'smooth',block:'center'});
+      log('info','deep link → stage '+STAGES[i].n+'/'+STAGES.length+' · '+STAGES[i].tag+' ('+shortTitle(STAGES[i])+')');
+      return;
+    }
+  }
+  const sec=document.getElementById(raw);
+  if(sec){
+    sec.scrollIntoView({behavior:'smooth',block:'start'});
+    const h=sec.querySelector('h3,h2,.mh');
+    log('info','deep link → map "'+raw+'"'+(h?' · '+h.textContent.trim():''));
+  }
+}
+window.addEventListener('hashchange',applyHash);
+applyHash();
 </script>
 </body>
 </html>

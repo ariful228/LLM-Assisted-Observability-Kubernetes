@@ -10,7 +10,7 @@ services:
       dockerfile: docker/Dockerfile
     container_name: ai-obsv-platform
     ports:
-      - "127.0.0.1:8000:8000"
+      - "127.0.0.1:8199:8199"
     environment:
       EXTERNAL_MODE: auto
       LLM_PROVIDER: mock
@@ -47,7 +47,7 @@ services:
       slack-sink:
         condition: service_started
     healthcheck:
-      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:8000/health')"]
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:8199/health')"]
       interval: 15s
       timeout: 5s
       retries: 5

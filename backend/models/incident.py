@@ -261,12 +261,12 @@ class KnowledgeDoc(BaseModel):
 
 
 # ---------------------------------------------------------------------------
-# Security findings (CKS coverage across the four layers)
+# Security findings (coverage across the four layers)
 # ---------------------------------------------------------------------------
 
 
 class SecurityLayer(str, Enum):
-    """Framing used for the four-layer CKS security model."""
+    """Framing used for the four-layer security model."""
 
     APPLICATION = "application"
     CONTAINER = "container"

@@ -8,6 +8,7 @@ otherwise a deterministic simulation backs the same interface.
 from __future__ import annotations
 
 import threading
+import time
 from typing import Any, Optional
 
 from backend.services import simulation
@@ -19,10 +20,13 @@ class KubernetesUnavailable(RuntimeError):
 
 
 class KubeAdapter:
+    _PROBE_TTL = 5.0
+
     def __init__(self) -> None:
         self._api = None
         self._apps = None
         self._rbac = None
+        self._last_probe = None
         self._settings_provider = get_settings
 
     # -- plumbing ----------------------------------------------------------
@@ -42,11 +46,29 @@ class KubeAdapter:
     def available(self) -> bool:
         if self.settings.external_mode == "simulated":
             return False
+        now = time.monotonic()
+        cached = self._last_probe
+        if cached and cached[0] == self.settings.external_mode and now - cached[1] < self._PROBE_TTL:
+            return cached[2]
         try:
+            import kubernetes  # noqa: PLC0415
+
             self._ensure_clients()
-            return self._api is not None
+            if self._api is None:
+                result = False
+            else:
+                kubernetes.client.VersionApi().get_code()
+                result = True
         except Exception:
-            return False
+            result = False
+            # Drop the cached clients so the next probe re-reads the kubeconfig.
+            # A recreated kind cluster gets a new API-server port, so clients
+            # built for the old endpoint would otherwise stay permanently dead.
+            self._api = None
+            self._apps = None
+            self._rbac = None
+        self._last_probe = (self.settings.external_mode, now, result)
+        return result
 
     def _ensure_clients(self) -> None:
         """Load the Kubernetes clients if a cluster is configured."""
